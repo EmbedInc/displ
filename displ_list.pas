@@ -19,9 +19,7 @@ procedure list_reset (                 {reset list fields to unused}
 begin
   list.first_p := nil;
   list.last_p := nil;
-  list.color_p := nil;
-  list.vect_parm_p := nil;
-  list.text_parm_p := nil;
+  displ_rend_init (list.rend);
   end;
 {
 ********************************************************************************

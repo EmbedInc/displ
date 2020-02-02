@@ -6,10 +6,6 @@
 }
 const
   displ_subsys_k = -68;                {subsystem ID for the DISPL library}
-{
-*   Status and error codes.
-}
-
 
 type
   displ_item_p_t = ^displ_item_t;
@@ -22,14 +18,19 @@ type
     opac: real;                        {0.0 to 1.0 opacity}
     end;
 
+  displ_rend_p_t = ^displ_rend_t;
+  displ_rend_t = record                {all the current state that effects rendering}
+    color_p: displ_color_p_t;          {points to current color}
+    vect_parm_p: rend_vect_parms_p_t;  {points to vector drawing parameters}
+    text_parm_p: rend_text_parms_p_t;  {points to text drawing parameters}
+    end;
+
   displ_p_t = ^displ_t;
   displ_t = record                     {top structure of a display list}
     mem_p: util_mem_context_p_t;       {points to mem context to use for this list}
     first_p: displ_item_p_t;           {points to first item in the list}
     last_p: displ_item_p_t;            {points to last item in the list}
-    color_p: displ_color_p_t;          {points to default color, NIL inherits}
-    vect_parm_p: rend_vect_parms_p_t;  {points to default vector parms, NIL inherits}
-    text_parm_p: rend_text_parms_p_t;  {points to default text parms, NIL inherits}
+    rend: displ_rend_t;                {default render settings for subordinate items}
     end;
 
   displ_coor2d_ent_p_t = ^displ_coor2d_ent_t;
@@ -77,6 +78,10 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
 {
 *   Subroutines and functions.
 }
+procedure displ_draw_item (            {draw item, current RENDlib state is default}
+  in      item: displ_item_t);         {the item to draw}
+  val_param; extern;
+
 procedure displ_edit_init (            {init for editing a list}
   out     edit: displ_edit_t;          {edit state to init, pos before first item}
   in var  list: displ_t);              {the list to set up editing of}
