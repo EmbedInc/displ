@@ -82,6 +82,10 @@ procedure displ_draw_item (            {draw item, current RENDlib state is defa
   in      item: displ_item_t);         {the item to draw}
   val_param; extern;
 
+procedure displ_draw_list (            {draw display list, curr RENDlib state is default}
+  in      list: displ_t);              {the display list to draw}
+  val_param; extern;
+
 procedure displ_edit_init (            {init for editing a list}
   out     edit: displ_edit_t;          {edit state to init, pos before first item}
   in var  list: displ_t);              {the list to set up editing of}

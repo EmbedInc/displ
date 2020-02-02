@@ -12,13 +12,17 @@
 type
   displ_draw_p_t = ^displ_draw_t;
   displ_draw_t = record                {state used while drawing}
-    parent_p: displ_draw_p_t;          {points to parent draw state, if any}
     curr: displ_rend_t;                {current render settings}
     def: displ_rend_t;                 {default render settings}
     end;
 {
 *   Private subroutines and functions.
 }
+procedure displ_draw_item_list (       {draw subordinate list display list item}
+  in      item: displ_item_t;          {the item to draw, must be type LIST}
+  in out  draw: displ_draw_t);         {drawing state}
+  val_param; extern;
+
 procedure displ_draw_item_vect (       {draw chained vectors display list item}
   in      item: displ_item_t;          {the item to draw, must be type VECT}
   in out  draw: displ_draw_t);         {drawing state}
