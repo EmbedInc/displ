@@ -1,11 +1,11 @@
 {   Routines that do drawing.
 }
 module displ_draw;
-module displ_draw_item;
-module displ_draw_itemst;
-module displ_draw_item_vect;
-module displ_draw_list;
-module displ_draw_listst;
+define displ_draw_item;
+define displ_draw_itemst;
+define displ_draw_item_vect;
+define displ_draw_list;
+define displ_draw_listst;
 %include 'displ2.ins.pas';
 {
 ********************************************************************************
