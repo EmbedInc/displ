@@ -86,6 +86,11 @@ procedure displ_draw_list (            {draw display list, curr RENDlib state is
   in      list: displ_t);              {the display list to draw}
   val_param; extern;
 
+procedure displ_edit_del (             {delete current display list item}
+  in out  edit: displ_edit_t;          {display list edit position}
+  in      fwd: boolean);               {try to move forward, not backward after del}
+  val_param; extern;
+
 procedure displ_edit_init (            {init for editing a list}
   out     edit: displ_edit_t;          {edit state to init, pos before first item}
   in var  list: displ_t);              {the list to set up editing of}
