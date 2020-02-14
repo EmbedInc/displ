@@ -28,6 +28,7 @@ type
   displ_p_t = ^displ_t;
   displ_t = record                     {top structure of a display list}
     mem_p: util_mem_context_p_t;       {points to mem context to use for this list}
+    id: sys_int_machine_t;             {assigned 1-N ID, 0 = unassigned}
     first_p: displ_item_p_t;           {points to first item in the list}
     last_p: displ_item_p_t;            {points to last item in the list}
     rend: displ_rend_t;                {default render settings for subordinate items}
@@ -75,9 +76,39 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
     item_p: displ_item_p_t;            {points to the VECT item}
     coor_p: displ_coor2d_ent_p_t;      {points to curr coordinate, NIL = start of list}
     end;
+
+  displ_dagl_ent_p_t = ^displ_dagl_ent_t;
+  displ_dagl_ent_t = record            {one entry in flattened DAG list}
+    prev_p: displ_dagl_ent_p_t;        {points to previous list entry, parent direction}
+    next_p: displ_dagl_ent_p_t;        {points to next list entry, child direction}
+    list_p: displ_p_t;                 {points to the display list for this entry}
+    id: sys_int_machine_t;             {sequential 1-N ID assigned, 1 is more parent}
+    end;
+
+  displ_dagl_p_t = ^displ_dagl_t;
+  displ_dagl_t = record                {linear list of DAG nodes with only fwd dependencies}
+    mem_p: util_mem_context_p_t;       {mem context for all DAG list dynamic memory}
+    first_p: displ_dagl_ent_p_t;       {points to first list entry, top parent}
+    last_p: displ_dagl_ent_p_t;        {poitns to last list entry, no dependencies}
+    n: sys_int_machine_t;              {number of list entries}
+    end;
 {
 *   Subroutines and functions.
 }
+procedure displ_dagl_close (           {end use of DAG list, deallocate resources}
+  in out  dagl: displ_dagl_t);         {the list to close}
+  val_param; extern;
+
+procedure displ_dagl_displ (           {fill in DAG list from one display list}
+  in out  dagl: displ_dagl_t;          {the DAG list to add to}
+  in var  displ: displ_t);             {the top level display list to add}
+  val_param; extern;
+
+procedure disp_dagl_init (             {init DAG list}
+  in out  mem: util_mem_context_t;     {parent memory context}
+  out     dagl: displ_dagl_t);         {the DAG list to initialize}
+  val_param; extern;
+
 procedure displ_draw_item (            {draw item, current RENDlib state is default}
   in      item: displ_item_t);         {the item to draw}
   val_param; extern;

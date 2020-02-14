@@ -17,6 +17,7 @@ procedure list_reset (                 {reset list fields to unused}
   val_param;
 
 begin
+  list.id := 0;
   list.first_p := nil;
   list.last_p := nil;
   displ_rend_init (list.rend);
