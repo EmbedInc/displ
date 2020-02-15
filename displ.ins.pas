@@ -104,7 +104,7 @@ procedure displ_dagl_displ (           {fill in DAG list from one display list}
   in var  displ: displ_t);             {the top level display list to add}
   val_param; extern;
 
-procedure disp_dagl_init (             {init DAG list}
+procedure displ_dagl_init (            {init DAG list}
   in out  mem: util_mem_context_t;     {parent memory context}
   out     dagl: displ_dagl_t);         {the DAG list to initialize}
   val_param; extern;
@@ -160,6 +160,12 @@ function displ_edvect_next (           {move to next coordinate in VECT item}
 function displ_edvect_prev (           {move to previous coordinate in VECT item}
   in out  edvect: displ_edvect_t)      {VECT item editing state}
   :boolean;                            {moved to new coor, not start of list}
+  val_param; extern;
+
+procedure displ_file_write (           {write display list DAG to file}
+  in      fnam: univ string_var_arg_t; {file name, will always end in ".displ"}
+  in out  displ: displ_t;              {top lev disp list, all referenced data written}
+  out     stat: sys_err_t);            {returned completion status}
   val_param; extern;
 
 procedure displ_item_list (            {make current item reference to a list}

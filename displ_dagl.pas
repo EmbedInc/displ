@@ -10,13 +10,13 @@ define displ_dagl_displ;
 {
 ********************************************************************************
 *
-*   Subroutine DISP_DAGL_INIT (MEM, DAGL)
+*   Subroutine DISPL_DAGL_INIT (MEM, DAGL)
 *
 *   Initialize the linear DAG list DAGL.  MEM is the parent memory context.  A
 *   subordinate memory context will be created, and all new memory for the list
 *   will be allocated from that subordinate context.
 }
-procedure disp_dagl_init (             {init DAG list}
+procedure displ_dagl_init (            {init DAG list}
   in out  mem: util_mem_context_t;     {parent memory context}
   out     dagl: displ_dagl_t);         {the DAG list to initialize}
   val_param;

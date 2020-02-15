@@ -12,6 +12,7 @@ call src_insall %srcdir% %libname%
 call src_pas %srcdir% %libname%_dagl
 call src_pas %srcdir% %libname%_edit
 call src_pas %srcdir% %libname%_edvect
+call src_pas %srcdir% %libname%_file
 call src_pas %srcdir% %libname%_draw
 call src_pas %srcdir% %libname%_item
 call src_pas %srcdir% %libname%_list

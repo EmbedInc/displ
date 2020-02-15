@@ -1,6 +1,7 @@
 displ_dagl.obj
 displ_edit.obj
 displ_edvect.obj
+displ_file.obj
 displ_draw.obj
 displ_item.obj
 displ_list.obj
