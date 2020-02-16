@@ -22,9 +22,15 @@
 *
 *     WFPS (OS, FP, SIG)  -  Append FP to output line, SIG significant digits.
 *
+*     WONOFF (OS, B)  -  Write boolean as "ON" or "OFF" to output line.
+*
 *     BLOCK_START (OS)  -  Start nested block.
 *
 *     BLOCK_END (OS)  -  End nested block.
+*
+*     WSPACE (OS, SPACE)  -  Write RENDlib coordinate space name.
+*
+*     WENDSTYLE (OS, STYLE)  -  Write vector end style.
 }
 module displ_file;
 define displ_file_write;
@@ -273,6 +279,24 @@ begin
 {
 ********************************************************************************
 *
+*   Local subroutine WONOFF (OS, B)
+*
+*   Write boolean value to the output line.  Either "ON" or "OFF" will be
+*   written.
+}
+procedure wonoff (                     {write boolean as ON or OFF to output line}
+  in out  os: outstate_t;              {output file writing state}
+  in      b: boolean);                 {the value to write}
+  val_param;
+
+begin
+  if b
+    then wtk (os, 'ON')
+    else wtk (os, 'OFF');
+  end;
+{
+********************************************************************************
+*
 *   Local subroutine BLOCK_START (OS)
 *
 *   Indicate that subsequent output file writing will be one nesting level lower
@@ -304,6 +328,85 @@ begin
 {
 ********************************************************************************
 *
+*   Local subroutine WSPACE (OS, SPACE)
+*
+*   Write the RENDlib coordinate space ID SPACE to the output line.
+}
+procedure wspace (                     {write RENDlib coordinate space name}
+  in out  os: outstate_t;              {output file writing state}
+  in      space: rend_space_k_t);      {coordinate space ID}
+  val_param;
+
+begin
+  case space of
+rend_space_2dimi_k: wtk (os, '2DIMI');
+rend_space_2dim_k: wtk (os, '2DIM');
+rend_space_2dimcl_k: wtk (os, '2DIMCL');
+rend_space_2d_k: wtk (os, '2D');
+rend_space_2dcl_k: wtk (os, '2DCL');
+rend_space_3dw_k: wtk (os, '3DW');
+rend_space_3dwpl_k: wtk (os, '3DWPL');
+rend_space_3dwcl_k: wtk (os, '3DWCL');
+rend_space_3d_k: wtk (os, '3D');
+rend_space_3dpl_k: wtk (os, '3DPL');
+rend_space_text_k: wtk (os, 'TEXT');
+rend_space_txdraw_k: wtk (os, 'TXDRAW');
+otherwise
+    wtk (os, 'NONE');
+    end;
+  end;
+{
+********************************************************************************
+*
+*   Local subroutine WENDSTYLE (OS, STYLE)
+*
+*   Write the string definition of a RENDlib vector end style.
+}
+procedure wendstyle (                  {write vector end style}
+  in out  os: outstate_t;              {output file writing state}
+  in      style: rend_end_style_t);    {the style to write}
+  val_param;
+
+begin
+  case style.style of                  {what top level style is this ?}
+rend_end_style_circ_k: begin
+      wtk (os, 'CIRC');
+      wint (os, style.nsides);
+      end;
+otherwise
+    wtk (os, 'RECT');
+    end;
+  end;
+{
+********************************************************************************
+*
+*   Local subroutine WTORG (OS, TORG)
+*
+*   Write the RENDlib text anchor origin name to the output line.
+}
+procedure wtorg (                      {write RENDlib text anchor origin name}
+  in out  os: outstate_t;              {output file writing state}
+  in      torg: rend_torg_k_t);        {text anchor origin ID}
+  val_param;
+
+begin
+  case torg of
+rend_torg_ul_k: wtk (os, 'UL');
+rend_torg_um_k: wtk (os, 'UM');
+rend_torg_ur_k: wtk (os, 'UR');
+rend_torg_ml_k: wtk (os, 'ML');
+rend_torg_mid_k: wtk (os, 'MID');
+rend_torg_mr_k: wtk (os, 'MR');
+rend_torg_ll_k: wtk (os, 'LL');
+rend_torg_lm_k: wtk (os, 'LM');
+rend_torg_lr_k: wtk (os, 'LR');
+rend_torg_down_k: wtk (os, 'DOWN');
+rend_torg_up_k: wtk (os, 'UP');
+    end;
+  end;
+{
+********************************************************************************
+*
 *   Local subroutine DISPL_FILE_WRITE_DISPL (OS, DISPL)
 *
 *   Write the contents of the display list DISPL to the display list file open
@@ -327,7 +430,25 @@ begin
   wstr (os, 'LIST');                   {start the list}
   wint (os, displ.id);                 {ID of this list}
   if not wline(os) then return;
-  block_start (os);                    {now with this LIST block}
+  block_start (os);                    {now in this LIST block}
+
+  if displ.rend.color_p <> nil then begin
+    wtk (os, 'COLOR');
+    wint (os, displ.rend.color_p^.id);
+    if not wline(os) then return;
+    end;
+
+  if displ.rend.vect_parm_p <> nil then begin
+    wtk (os, 'VPARM');
+    wint (os, displ.rend.vect_parm_p^.id);
+    if not wline(os) then return;
+    end;
+
+  if displ.rend.text_parm_p <> nil then begin
+    wtk (os, 'TPARM');
+    wint (os, displ.rend.text_parm_p^.id);
+    if not wline(os) then return;
+    end;
 
   item_p := displ.first_p;             {init to first item in the display list}
   while item_p <> nil do begin         {loop over all the items in this display list}
@@ -440,22 +561,106 @@ begin
 {
 *   Write vector parameter sets.
 }
+  vparm_p := dagl.vparm_p;             {init to first list entry}
+  while vparm_p <> nil do begin        {loop over the list entries}
+    if vparm_p^.vparm_p^.id = 1 then begin {leave blank before start of vector parms}
+      blankline (os);
+      end;
+    wtk (os, 'VPARM');
+    block_start (os);                  {now within this VPARM block}
+    wint (os, vparm_p^.vparm_p^.id);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'WIDTH');
+    wfps (os, vparm_p^.vparm_p^.vparm.width, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'POLY');
+    wspace (os, vparm_p^.vparm_p^.vparm.poly_level);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'START');
+    wendstyle (os, vparm_p^.vparm_p^.vparm.start_style);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'END');
+    wendstyle (os, vparm_p^.vparm_p^.vparm.end_style);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'SUBPIX');
+    wonoff (os, vparm_p^.vparm_p^.vparm.subpixel);
+    if not wline(os) then goto abort;
 
+    block_end (os);                    {done with this VPARM block}
+    vparm_p := vparm_p^.next_p;        {to next list entry}
+    end;                               {back to write this new list entry}
 {
 *   Write text parameter sets.
 }
+  tparm_p := dagl.tparm_p;             {init to first list entry}
+  while tparm_p <> nil do begin        {loop over the list entries}
+    if tparm_p^.tparm_p^.id = 1 then begin {leave blank before start of text parms}
+      blankline (os);
+      end;
+    wtk (os, 'TPARM');
+    block_start (os);                  {now within this TPARM block}
+    wint (os, tparm_p^.tparm_p^.id);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'SIZE');
+    wfps (os, tparm_p^.tparm_p^.tparm.size, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'WIDTH');
+    wfps (os, tparm_p^.tparm_p^.tparm.width, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'HEIGHT');
+    wfps (os, tparm_p^.tparm_p^.tparm.height, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'SLANT');
+    wfps (os, tparm_p^.tparm_p^.tparm.slant, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'ROT');
+    wfps (os, tparm_p^.tparm_p^.tparm.rot, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'LSPACE');
+    wfps (os, tparm_p^.tparm_p^.tparm.lspace, 5);
+    if not wline(os) then goto abort;
 
+    wtk (os, 'VWIDTH');
+    wfps (os, tparm_p^.tparm_p^.tparm.vect_width, 5);
+    if not wline(os) then goto abort;
+
+    wtk (os, 'FONT');
+    wvtk (os, tparm_p^.tparm_p^.tparm.font);
+    if not wline(os) then goto abort;
+
+    wtk (os, 'COOR');
+    wspace (os, tparm_p^.tparm_p^.tparm.coor_level);
+    if not wline(os) then goto abort;
+
+    wtk (os, 'STORG');
+    wtorg (os, tparm_p^.tparm_p^.tparm.start_org);
+    if not wline(os) then goto abort;
+
+    wtk (os, 'ENORG');
+    wtorg (os, tparm_p^.tparm_p^.tparm.start_org);
+    if not wline(os) then goto abort;
+
+    wtk (os, 'POLY');
+    wonoff (os, tparm_p^.tparm_p^.tparm.poly);
+    if not wline(os) then goto abort;
+
+    block_end (os);                    {done with this TPARM block}
+    tparm_p := tparm_p^.next_p;        {to next list entry}
+    end;                               {back to write this new list entry}
+{
+*   Write the display lists to the output file.
+}
   ent_p := dagl.last_p;                {init current list entry to last in list}
   while ent_p <> nil do begin          {scan list lowest to highest in hierarchy}
     displ_file_write_displ (os, ent_p^.list_p^); {write this list to file}
