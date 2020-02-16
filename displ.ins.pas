@@ -85,12 +85,39 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
     id: sys_int_machine_t;             {sequential 1-N ID assigned, 1 is more parent}
     end;
 
+  displ_dagl_color_p_t = ^displ_dagl_color_t;
+  displ_dagl_color_t = record          {one color in list}
+    next_p: displ_dagl_color_p_t;      {points to next list entry}
+    id: sys_int_machine_t;             {assigned 1-N ID for this color}
+    col_p: displ_color_p_t;            {points to the color}
+    end;
+
+  displ_dagl_vparm_p_t = ^displ_dagl_vparm_t;
+  displ_dagl_vparm_t = record          {one set of vector parameters in list}
+    next_p: displ_dagl_vparm_p_t;      {points to next list entry}
+    id: sys_int_machine_t;             {assigned 1-N ID for this vparm}
+    vparm_p: rend_vect_parms_p_t;      {points to the vector parameters}
+    end;
+
+  displ_dagl_tparm_p_t = ^displ_dagl_tparm_t;
+  displ_dagl_tparm_t = record          {one set of text parameters in list}
+    next_p: displ_dagl_tparm_p_t;      {points to next list entry}
+    id: sys_int_machine_t;             {assigned 1-N ID for this tparm}
+    tparm_p: rend_text_parms_p_t;      {points to the text parameters}
+    end;
+
   displ_dagl_p_t = ^displ_dagl_t;
   displ_dagl_t = record                {linear list of DAG nodes with only fwd dependencies}
     mem_p: util_mem_context_p_t;       {mem context for all DAG list dynamic memory}
     first_p: displ_dagl_ent_p_t;       {points to first list entry, top parent}
     last_p: displ_dagl_ent_p_t;        {poitns to last list entry, no dependencies}
-    n: sys_int_machine_t;              {number of list entries}
+    n: sys_int_machine_t;              {number of display lists in DAG list}
+    ncol: sys_int_machine_t;           {number of colors in list}
+    nvparm: sys_int_machine_t;         {number of vector parameter sets in list}
+    ntparm: sys_int_machine_t;         {number of test parameter sets in list}
+    color_p: displ_dagl_color_p_t;     {points to list of colors}
+    vparm_p: displ_dagl_vparm_p_t;     {points to list of vector parameters}
+    tparm_p: displ_dagl_tparm_p_t;     {points to list of text parameters}
     end;
 {
 *   Subroutines and functions.

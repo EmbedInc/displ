@@ -391,6 +391,9 @@ var
   os: outstate_t;                      {the complete output file writing state}
   dagl: displ_dagl_t;                  {flattened directed DAG list}
   ent_p: displ_dagl_ent_p_t;           {points to current entry in DAG list}
+  col_p: displ_dagl_color_p_t;         {points to curr color list entry}
+  vparm_p: displ_dagl_vparm_p_t;       {points to curr vect parms list entry}
+  tparm_p: displ_dagl_tparm_p_t;       {points to curr text parms list entry}
 
 label
   abort;
@@ -402,9 +405,56 @@ begin
   displ_dagl_init (util_top_mem_context, dagl); {init the flattened DAG list}
   displ_dagl_displ (dagl, displ);      {build the DAG list, IDs for each disp list}
 
-  wstr (os, 'LISTS');                  {indicate number of lists that will follow}
+  wstr (os, 'LISTS');                  {indicate number of display lists in this file}
   wint (os, dagl.n);
   if not wline(os) then goto abort;
+
+  wstr (os, 'COLORS');                 {indicate number of color parameter sets in file}
+  wint (os, dagl.ncol);
+  if not wline(os) then goto abort;
+
+  wstr (os, 'VPARMS');                 {indicate number of vector parm sets in this file}
+  wint (os, dagl.nvparm);
+  if not wline(os) then goto abort;
+
+  wstr (os, 'TPARMS');                 {indicate number of text parm sets in this file}
+  wint (os, dagl.ntparm);
+  if not wline(os) then goto abort;
+{
+*   Write the color sets.
+}
+  col_p := dagl.color_p;               {init to first list entry}
+  while col_p <> nil do begin          {loop over the list entries}
+    if col_p^.id = 1 then begin        {leave blank before start of color definitions}
+      blankline (os);
+      end;
+    wstr (os, 'COLOR');
+    wint (os, col_p^.id);
+    wfpf (os, col_p^.col_p^.red, 3);
+    wfpf (os, col_p^.col_p^.grn, 3);
+    wfpf (os, col_p^.col_p^.blu, 3);
+    wfpf (os, col_p^.col_p^.opac, 3);
+    if not wline(os) then goto abort;
+    col_p := col_p^.next_p;            {to next list entry}
+    end;                               {back to write this new list entry}
+{
+*   Write vector parameter sets.
+}
+
+
+
+
+
+
+{
+*   Write text parameter sets.
+}
+
+
+
+
+
+
 
   ent_p := dagl.last_p;                {init current list entry to last in list}
   while ent_p <> nil do begin          {scan list lowest to highest in hierarchy}
