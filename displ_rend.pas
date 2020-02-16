@@ -97,12 +97,12 @@ hset:
 *   current and default settings.
 }
 procedure displ_rend_set_vect (        {set vector parameters as appropriate}
-  in      vect_p: rend_vect_parms_p_t; {NIL or points to explicit setting}
+  in      vect_p: displ_vparm_p_t;     {NIL or points to explicit setting}
   in out  draw: displ_draw_t);         {current drawing state, may be updated}
   val_param;
 
 var
-  set_p: rend_vect_parms_p_t;          {points to resolved setting}
+  set_p: displ_vparm_p_t;              {points to resolved setting}
 
 label
   hset;
@@ -122,7 +122,7 @@ hset:
   if set_p = draw.curr.vect_parm_p     {already set as desired, nothing to do ?}
     then return;
 
-  rend_set.vect_parms^ (set_p^);       {change the setting}
+  rend_set.vect_parms^ (set_p^.vparm); {change the setting}
   draw.curr.vect_parm_p := set_p;      {update pointer to current setting}
   end;
 {
@@ -135,12 +135,12 @@ hset:
 *   current and default settings.
 }
 procedure displ_rend_set_text (        {set text parameters as appropriate}
-  in      text_p: rend_text_parms_p_t; {NIL or points to explicit setting}
+  in      text_p: displ_tparm_p_t;     {NIL or points to explicit setting}
   in out  draw: displ_draw_t);         {current drawing state, may be updated}
   val_param;
 
 var
-  set_p: rend_text_parms_p_t;          {points to resolved setting}
+  set_p: displ_tparm_p_t;              {points to resolved setting}
 
 label
   hset;
@@ -160,6 +160,6 @@ hset:
   if set_p = draw.curr.text_parm_p     {already set as desired, nothing to do ?}
     then return;
 
-  rend_set.text_parms^ (set_p^);       {change the setting}
+  rend_set.text_parms^ (set_p^.tparm); {change the setting}
   draw.curr.text_parm_p := set_p;      {update pointer to current setting}
   end;

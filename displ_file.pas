@@ -402,11 +402,11 @@ begin
   displ_file_open (fnam, os, stat);    {open file, set up output file writing state}
   if sys_error(stat) then return;
 
-  displ_dagl_init (util_top_mem_context, dagl); {init the flattened DAG list}
+  displ_dagl_open (util_top_mem_context, dagl); {init the flattened DAG list}
   displ_dagl_displ (dagl, displ);      {build the DAG list, IDs for each disp list}
 
   wstr (os, 'LISTS');                  {indicate number of display lists in this file}
-  wint (os, dagl.n);
+  wint (os, dagl.nlist);
   if not wline(os) then goto abort;
 
   wstr (os, 'COLORS');                 {indicate number of color parameter sets in file}
@@ -425,11 +425,11 @@ begin
 }
   col_p := dagl.color_p;               {init to first list entry}
   while col_p <> nil do begin          {loop over the list entries}
-    if col_p^.id = 1 then begin        {leave blank before start of color definitions}
+    if col_p^.col_p^.id = 1 then begin {leave blank before start of color definitions}
       blankline (os);
       end;
     wstr (os, 'COLOR');
-    wint (os, col_p^.id);
+    wint (os, col_p^.col_p^.id);
     wfpf (os, col_p^.col_p^.red, 3);
     wfpf (os, col_p^.col_p^.grn, 3);
     wfpf (os, col_p^.col_p^.blu, 3);

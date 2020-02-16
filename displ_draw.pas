@@ -22,8 +22,8 @@ procedure displ_draw_item (            {draw item, current RENDlib state is defa
 var
   draw: displ_draw_t;                  {resolved drawing state}
   color: displ_color_t;                {default color}
-  vect_parm: rend_vect_parms_t;        {default vector drawing parameters}
-  text_parm: rend_text_parms_t;        {default text drawing parameters}
+  vect_parm: displ_vparm_t;            {default vector drawing parameters}
+  text_parm: displ_tparm_t;            {default text drawing parameters}
 
 begin
   rend_set.enter_rend^;                {enter graphics mode}
@@ -32,8 +32,8 @@ begin
 }
   rend_get.rgba^ (                     {get the current color}
     color.red, color.grn, color.blu, color.opac);
-  rend_get.vect_parms^ (vect_parm);    {get the current vector drawing parameters}
-  rend_get.text_parms^ (text_parm);    {get the current text drawing parameters}
+  rend_get.vect_parms^ (vect_parm.vparm); {get the current vector drawing parameters}
+  rend_get.text_parms^ (text_parm.tparm); {get the current text drawing parameters}
 {
 *   Fill in the resolved drawing state.
 }
@@ -131,13 +131,13 @@ begin
   if coor_p = nil then return;         {no coordinate, nothing to draw ?}
   if coor_p^.next_p = nil then return; {no second coordinate, nothing to draw ?}
 
- displ_rend_set_color (                {set the color}
-   item.vect_color_p, draw);
- displ_rend_set_vect (                 {set vector drawing parameters}
-   item.vect_parm_p, draw);
+  displ_rend_set_color (               {set the color}
+    item.vect_color_p, draw);
+  displ_rend_set_vect (                {set vector drawing parameters}
+    item.vect_parm_p, draw);
 
- rend_set.cpnt_2d^ (coor_p^.x, coor_p^.y); {set current point to first coordinate}
-  coor_p := coor_p^.next_p;            {advance to the second coordinate}
+  rend_set.cpnt_2d^ (coor_p^.x, coor_p^.y); {set current point to first coordinate}
+    coor_p := coor_p^.next_p;          {advance to the second coordinate}
 
  repeat                                {back here each new vector to draw}
    rend_prim.vect_2d^ (coor_p^.x, coor_p^.y); {draw vector to this coordinate}
@@ -159,8 +159,8 @@ procedure displ_draw_list (            {draw display list, curr RENDlib state is
 var
   draw: displ_draw_t;                  {resolved drawing state}
   color: displ_color_t;                {default color}
-  vect_parm: rend_vect_parms_t;        {default vector drawing parameters}
-  text_parm: rend_text_parms_t;        {default text drawing parameters}
+  vect_parm: displ_vparm_t;            {default vector drawing parameters}
+  text_parm: displ_tparm_t;            {default text drawing parameters}
 
 begin
   rend_set.enter_rend^;                {enter graphics mode}
@@ -169,8 +169,8 @@ begin
 }
   rend_get.rgba^ (                     {get the current color}
     color.red, color.grn, color.blu, color.opac);
-  rend_get.vect_parms^ (vect_parm);    {get the current vector drawing parameters}
-  rend_get.text_parms^ (text_parm);    {get the current text drawing parameters}
+  rend_get.vect_parms^ (vect_parm.vparm); {get the current vector drawing parameters}
+  rend_get.text_parms^ (text_parm.tparm); {get the current text drawing parameters}
 {
 *   Fill in the resolved drawing state.
 }

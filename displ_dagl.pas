@@ -3,35 +3,50 @@
 *   list entry can only depend on later, not earlier, list entries.
 }
 module displ_dagl;
-define displ_dagl_init;
+define displ_dagl_open;
 define displ_dagl_close;
 define displ_dagl_displ;
 %include 'displ2.ins.pas';
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_DAGL_INIT (MEM, DAGL)
+*   Local subroutine DISPL_DAGL_INIT (DAGL)
 *
-*   Initialize the linear DAG list DAGL.  MEM is the parent memory context.  A
-*   subordinate memory context will be created, and all new memory for the list
-*   will be allocated from that subordinate context.
+*   Set the DAG list DAGL to default, benign, or initial values to the extent
+*   possible.  The MEM_P field is not altered.
 }
-procedure displ_dagl_init (            {init DAG list}
-  in out  mem: util_mem_context_t;     {parent memory context}
-  out     dagl: displ_dagl_t);         {the DAG list to initialize}
+procedure displ_dagl_init (            {set to initial or default values}
+  out     dagl: displ_dagl_t);         {the DAG list to set values of}
   val_param;
 
 begin
-  util_mem_context_get (mem, dagl.mem_p); {create the mem context for this DAG list}
   dagl.first_p := nil;                 {init the list to empty}
   dagl.last_p := nil;
-  dagl.n := 0;
+  dagl.nlist := 0;
   dagl.ncol := 0;                      {no colors in list}
   dagl.nvparm := 0;                    {no vector parameters in the list}
   dagl.ntparm := 0;                    {no text parameters in the list}
   dagl.color_p := nil;                 {init the color list to empty}
   dagl.vparm_p := nil;                 {init the vector parameters list to empty}
   dagl.tparm_p := nil;                 {init the text parmeters list to empty}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine DISPL_DAGL_OPEN (MEM, DAGL)
+*
+*   Initialize the linear DAG list DAGL.  MEM is the parent memory context.  A
+*   subordinate memory context will be created, and all new memory for the list
+*   will be allocated from that subordinate context.
+}
+procedure displ_dagl_open (            {start use of a DAG list}
+  in out  mem: util_mem_context_t;     {parent memory context}
+  out     dagl: displ_dagl_t);         {the DAG list to initialize}
+  val_param;
+
+begin
+  util_mem_context_get (mem, dagl.mem_p); {create the mem context for this DAG list}
+  displ_dagl_init (dagl);              {set remaining fields to initial values}
   end;
 {
 ********************************************************************************
@@ -47,15 +62,7 @@ procedure displ_dagl_close (           {end use of DAG list, deallocate resource
 
 begin
   util_mem_context_del (dagl.mem_p);   {dealloc memory, delete private mem context}
-  dagl.first_p := nil;
-  dagl.last_p := nil;
-  dagl.n := 0;
-  dagl.ncol := 0;                      {no colors in list}
-  dagl.nvparm := 0;                    {no vector parameters in the list}
-  dagl.ntparm := 0;                    {no text parameters in the list}
-  dagl.color_p := nil;                 {init the color list to empty}
-  dagl.vparm_p := nil;                 {init the vector parameters list to empty}
-  dagl.tparm_p := nil;                 {init the text parmeters list to empty}
+  displ_dagl_init (dagl);              {set remaining fields to initial values}
   end;
 {
 ********************************************************************************
@@ -90,7 +97,6 @@ begin
 
   col_p^.next_p := dagl.color_p;       {link to start of list}
   dagl.color_p := col_p;
-  col_p^.id := 0;                      {ID not yet assigned}
   col_p^.col_p := color_p;             {save pointer to the color}
 
   dagl.ncol := dagl.ncol + 1;          {count one more color list entry}
@@ -105,7 +111,7 @@ begin
 }
 procedure displ_dagl_vparm (           {make sure vector parameters are in DAG list}
   in out  dagl: displ_dagl_t;          {the DAG list}
-  in      vparm_p: rend_vect_parms_p_t); {pointer to vector parms to ensure in list}
+  in      vparm_p: displ_vparm_p_t);   {pointer to vector parms to ensure in list}
   val_param;
 
 var
@@ -129,7 +135,6 @@ begin
 
   ent_p^.next_p := dagl.vparm_p;       {link to start of list}
   dagl.vparm_p := ent_p;
-  ent_p^.id := 0;                      {ID not yet assigned}
   ent_p^.vparm_p := vparm_p;           {save pointer to the parameters}
 
   dagl.nvparm := dagl.nvparm + 1;      {count one more vector parameters list entry}
@@ -144,7 +149,7 @@ begin
 }
 procedure displ_dagl_tparm (           {make sure text parameters are in DAG list}
   in out  dagl: displ_dagl_t;          {the DAG list}
-  in      tparm_p: rend_text_parms_p_t); {pointer to text parms to ensure in list}
+  in      tparm_p: displ_tparm_p_t);   {pointer to text parms to ensure in list}
   val_param;
 
 var
@@ -168,7 +173,6 @@ begin
 
   ent_p^.next_p := dagl.tparm_p;       {link to start of list}
   dagl.tparm_p := ent_p;
-  ent_p^.id := 0;                      {ID not yet assigned}
   ent_p^.tparm_p := tparm_p;           {save pointer to the parameters}
 
   dagl.ntparm := dagl.ntparm + 1;      {count one more text parameters list entry}
@@ -214,7 +218,7 @@ begin
       end
     ;
 
-  dagl.n := dagl.n + 1;                {count one more entry in the DAG list}
+  dagl.nlist := dagl.nlist + 1;        {count one more entry in the DAG list}
 
   new_p^.list_p := nil;                {init remaining fields of the new entry}
   new_p^.id := 0;
@@ -248,7 +252,7 @@ begin
   displ_dagl_ent_new (dagl, pos_p, top_p); {create top level entry for display list}
   top_p^.list_p := addr(displ);        {fill in the entry}
 
-  displ_dagl_color (dagl, displ.rend.color_p); {make rendering states in their lists}
+  displ_dagl_color (dagl, displ.rend.color_p); {ensure rendering states in their lists}
   displ_dagl_vparm (dagl, displ.rend.vect_parm_p);
   displ_dagl_tparm (dagl, displ.rend.text_parm_p);
 
@@ -341,7 +345,7 @@ begin
   id := 1;                             {init next ID to assign}
   col_p := dagl.color_p;               {init to first entry in the list}
   while col_p <> nil do begin          {loop over all the list entries}
-    col_p^.id := id;                   {assign ID to this entry}
+    col_p^.col_p^.id := id;            {assign ID to this entry}
     id := id + 1;                      {update ID to assign next entry}
     col_p := col_p^.next_p;            {advance to the next entry in the list}
     end;                               {back to do this new entry}
@@ -351,7 +355,7 @@ begin
   id := 1;                             {init next ID to assign}
   vect_p := dagl.vparm_p;              {init to first entry in the list}
   while vect_p <> nil do begin         {loop over all the list entries}
-    vect_p^.id := id;                  {assign ID to this entry}
+    vect_p^.vparm_p^.id := id;         {assign ID to this entry}
     id := id + 1;                      {update ID to assign next entry}
     vect_p := vect_p^.next_p;          {advance to the next entry in the list}
     end;                               {back to do this new entry}
@@ -361,7 +365,7 @@ begin
   id := 1;                             {init next ID to assign}
   text_p := dagl.tparm_p;              {init to first entry in the list}
   while text_p <> nil do begin         {loop over all the list entries}
-    text_p^.id := id;                  {assign ID to this entry}
+    text_p^.tparm_p^.id := id;         {assign ID to this entry}
     id := id + 1;                      {update ID to assign next entry}
     text_p := text_p^.next_p;          {advance to the next entry in the list}
     end;                               {back to do this new entry}

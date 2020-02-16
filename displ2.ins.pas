@@ -53,11 +53,11 @@ procedure displ_rend_set_color (       {set color as appropriate}
   val_param; extern;
 
 procedure displ_rend_set_text (        {set text parameters as appropriate}
-  in      text_p: rend_text_parms_p_t; {NIL or points to explicit setting}
+  in      text_p: displ_tparm_p_t;     {NIL or points to explicit setting}
   in out  draw: displ_draw_t);         {current drawing state, may be updated}
   val_param; extern;
 
 procedure displ_rend_set_vect (        {set vector parameters as appropriate}
-  in      vect_p: rend_vect_parms_p_t; {NIL or points to explicit setting}
+  in      vect_p: displ_vparm_p_t;     {NIL or points to explicit setting}
   in out  draw: displ_draw_t);         {current drawing state, may be updated}
   val_param; extern;

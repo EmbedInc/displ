@@ -16,13 +16,26 @@ type
     grn: real;
     blu: real;
     opac: real;                        {0.0 to 1.0 opacity}
+    id: sys_int_machine_t;             {assigned 1-N ID, 0 = unassigned}
+    end;
+
+  displ_vparm_p_t = ^displ_vparm_t;
+  displ_vparm_t = record               {vector drawing parameters}
+    vparm: rend_vect_parms_t;          {the RENDlib parameters}
+    id: sys_int_machine_t;             {assigned 1-N ID, 0 = unassigned}
+    end;
+
+  displ_tparm_p_t = ^displ_tparm_t;
+  displ_tparm_t = record               {text drawing parameters}
+    tparm: rend_text_parms_t;          {the RENDlib parameters}
+    id: sys_int_machine_t;             {assigned 1-N ID, 0 = unassigned}
     end;
 
   displ_rend_p_t = ^displ_rend_t;
   displ_rend_t = record                {all the current state that effects rendering}
     color_p: displ_color_p_t;          {points to current color}
-    vect_parm_p: rend_vect_parms_p_t;  {points to vector drawing parameters}
-    text_parm_p: rend_text_parms_p_t;  {points to text drawing parameters}
+    vect_parm_p: displ_vparm_p_t;      {points to vector drawing parameters}
+    text_parm_p: displ_tparm_p_t;      {points to text drawing parameters}
     end;
 
   displ_p_t = ^displ_t;
@@ -61,7 +74,7 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
       vect_first_p: displ_coor2d_ent_p_t; {points starting coordinate}
       vect_last_p: displ_coor2d_ent_p_t; {points to ending coordinate}
       vect_color_p: displ_color_p_t;   {points to color, NIL inherits}
-      vect_parm_p: rend_vect_parms_p_t; {points to vector properties, NIL iherits}
+      vect_parm_p: displ_vparm_p_t;    {points to vector properties, NIL iherits}
       );
     end;
 
@@ -88,22 +101,19 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
   displ_dagl_color_p_t = ^displ_dagl_color_t;
   displ_dagl_color_t = record          {one color in list}
     next_p: displ_dagl_color_p_t;      {points to next list entry}
-    id: sys_int_machine_t;             {assigned 1-N ID for this color}
     col_p: displ_color_p_t;            {points to the color}
     end;
 
   displ_dagl_vparm_p_t = ^displ_dagl_vparm_t;
   displ_dagl_vparm_t = record          {one set of vector parameters in list}
     next_p: displ_dagl_vparm_p_t;      {points to next list entry}
-    id: sys_int_machine_t;             {assigned 1-N ID for this vparm}
-    vparm_p: rend_vect_parms_p_t;      {points to the vector parameters}
+    vparm_p: displ_vparm_p_t;          {points to the vector parameters}
     end;
 
   displ_dagl_tparm_p_t = ^displ_dagl_tparm_t;
   displ_dagl_tparm_t = record          {one set of text parameters in list}
     next_p: displ_dagl_tparm_p_t;      {points to next list entry}
-    id: sys_int_machine_t;             {assigned 1-N ID for this tparm}
-    tparm_p: rend_text_parms_p_t;      {points to the text parameters}
+    tparm_p: displ_tparm_p_t;          {points to the text parameters}
     end;
 
   displ_dagl_p_t = ^displ_dagl_t;
@@ -111,7 +121,7 @@ displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
     mem_p: util_mem_context_p_t;       {mem context for all DAG list dynamic memory}
     first_p: displ_dagl_ent_p_t;       {points to first list entry, top parent}
     last_p: displ_dagl_ent_p_t;        {poitns to last list entry, no dependencies}
-    n: sys_int_machine_t;              {number of display lists in DAG list}
+    nlist: sys_int_machine_t;          {number of display lists in DAG list}
     ncol: sys_int_machine_t;           {number of colors in list}
     nvparm: sys_int_machine_t;         {number of vector parameter sets in list}
     ntparm: sys_int_machine_t;         {number of test parameter sets in list}
@@ -131,7 +141,7 @@ procedure displ_dagl_displ (           {fill in DAG list from one display list}
   in var  displ: displ_t);             {the top level display list to add}
   val_param; extern;
 
-procedure displ_dagl_init (            {init DAG list}
+procedure displ_dagl_open (            {start use of a DAG list}
   in out  mem: util_mem_context_t;     {parent memory context}
   out     dagl: displ_dagl_t);         {the DAG list to initialize}
   val_param; extern;
