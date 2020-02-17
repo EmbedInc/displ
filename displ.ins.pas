@@ -222,6 +222,11 @@ procedure displ_list_del (             {delete list, deallocate resources}
   in out  list: displ_t);              {the list to delete}
   val_param; extern;
 
+function  displ_list_draws (           {check whether display list causes drawing}
+  in      list: displ_t)               {the display list to check}
+  :boolean;                            {causes drawing}
+  val_param; extern;
+
 procedure displ_list_new (             {create a new display list}
   in out  mem: util_mem_context_t;     {parent mem context, subordinate created for list}
   out     list: displ_t);              {returned filled-in list descriptor}

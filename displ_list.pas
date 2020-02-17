@@ -3,6 +3,7 @@
 module displ_list;
 define displ_list_new;
 define displ_list_del;
+define displ_list_draws;
 %include 'displ2.ins.pas';
 {
 ********************************************************************************
@@ -62,4 +63,50 @@ begin
     end;
 
   list_reset (list);                   {reset all other fields to unused}
+  end;
+{
+********************************************************************************
+*
+*   Function DISPL_LIST_DRAWS (LIST)
+*
+*   Determine whether a display list causes any actual drawing.
+}
+function  displ_list_draws (           {check whether display list causes drawing}
+  in      list: displ_t)               {the display list to check}
+  :boolean;                            {causes drawing}
+  val_param;
+
+var
+  item_p: displ_item_p_t;              {points to current item in the display list}
+
+label
+  done_item;
+
+begin
+  displ_list_draws := true;            {init to list does cause drawing}
+
+  item_p := list.first_p;              {init to first item in the list}
+  while item_p <> nil do begin         {scan the items in the display list}
+    case item_p^.item of               {which type of item is this ?}
+
+displ_item_list_k: begin               {subordinate display list}
+        if item_p^.list_sub_p = nil then goto done_item; {no list here ?}
+        if displ_list_draws(item_p^.list_sub_p^) then return; {sub-list draws}
+        end;
+
+displ_item_vect_k: begin               {chain of vectors}
+        if item_p^.vect_first_p = nil  {no points at all ?}
+          then goto done_item;
+        if item_p^.vect_first_p^.next_p = nil {no second point, so no vector ?}
+          then goto done_item;
+        return;                        {at least one vector, this list draws}
+        end;
+
+      end;                             {end of item type cases}
+
+done_item:                             {done with this item, on to next}
+    item_p := item_p^.next_p;          {to the next item in this list}
+    end;                               {back to check this new item}
+
+  displ_list_draws := false;           {checked whole list, and no drawing}
   end;
