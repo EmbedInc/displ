@@ -6,6 +6,22 @@
 }
 const
   displ_subsys_k = -68;                {subsystem ID for the DISPL library}
+  displ_stat_badindent_k = 1;          {bad DISPL file indentation level}
+  displ_stat_2lists_k = 2;             {multiple LISTS commands}
+  displ_stat_2colors_k = 3;            {multiple COLORS commands}
+  displ_stat_2vparms_k = 4;            {multiple VPARMS commands}
+  displ_stat_2tparms_k = 5;            {multiple TPARMS commands}
+  displ_stat_badcmd_k = 6;             {unrecognized command}
+  displ_stat_badval_k = 7;             {bad value read from file}
+  displ_stat_errsyn_k = 8;             {syntax error in file}
+  displ_stat_badcolid_k = 9;           {invalid color ID}
+  displ_stat_dupcol_k = 10;            {duplicate color definition}
+  displ_stat_badvpid_k = 11;           {invalid VPARM ID}
+  displ_stat_dupvparm_k = 12;          {duplicate VPARM  definition}
+  displ_stat_noparm_k = 13;            {missing parameter}
+  displ_stat_extratk_k = 14;           {extra token}
+  displ_stat_badtpid_k = 15;           {invalid TPARM ID}
+  displ_stat_duptparm_k = 16;          {duplicate TPARM  definition}
 
 type
   displ_item_p_t = ^displ_item_t;
@@ -197,6 +213,12 @@ function displ_edvect_next (           {move to next coordinate in VECT item}
 function displ_edvect_prev (           {move to previous coordinate in VECT item}
   in out  edvect: displ_edvect_t)      {VECT item editing state}
   :boolean;                            {moved to new coor, not start of list}
+  val_param; extern;
+
+procedure displ_file_read (            {read display list from file}
+  in      fnam: univ string_var_arg_t; {file name, will always end in ".displ"}
+  in out  displ: displ_t;              {display list to add file data to the start of}
+  out     stat: sys_err_t);            {returned completion status}
   val_param; extern;
 
 procedure displ_file_write (           {write display list DAG to file}

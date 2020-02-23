@@ -1,4 +1,4 @@
-{   Routines for reading/writing display lists to/from files.
+{   Routines for writing to display list files.
 *
 *   Quick reference of routines for writing to the output file:
 *
@@ -55,7 +55,7 @@ procedure displ_file_open (            {open output file}
   in      fnam: univ string_var_arg_t; {file name, will always end in ".displ"}
   out     os: outstate_t;              {returned output file writing state}
   in out  stat: sys_err_t);            {completion status}
-  val_param;
+  val_param; internal;
 
 begin
   file_open_write_text (               {open the output file}
@@ -82,7 +82,7 @@ begin
 function wline (                       {write line to file, reset line to empty}
   in out  os: outstate_t)              {output file writing state}
   :boolean;                            {no error}
-  val_param;
+  val_param; internal;
 
 begin
   file_write_text (os.buf, os.conn, os.stat_p^); {write the output buffer to the file}
@@ -99,7 +99,7 @@ begin
 }
 procedure blankline (                  {write blank line unless at start of file}
   in out  os: outstate_t);             {output file writing state}
-  val_param;
+  val_param; internal;
 
 begin
   if os.buf.len > 0 then begin         {write any unwritten output content}
@@ -122,7 +122,7 @@ begin
 procedure wvstr (                      {write var string to the output line}
   in out  os: outstate_t;              {output file writing state}
   in      vstr: univ string_var_arg_t); {the string to write}
-  val_param;
+  val_param; internal;
 
 var
   nsp: sys_int_machine_t;              {number of leading spaces for indentation}
@@ -148,7 +148,7 @@ begin
 procedure wstr (                       {write Pascal string to output line}
   in out  os: outstate_t;              {output file writing state}
   in      str: string);                {the string to write}
-  val_param;
+  val_param; internal;
 
 var
   vstr: string_var80_t;
@@ -171,7 +171,7 @@ begin
 procedure wvtk (                       {write var string as token to output line}
   in out  os: outstate_t;              {output file writing state}
   in      vstr: univ string_var_arg_t); {var string to write as single token}
-  val_param;
+  val_param; internal;
 
 var
   tk: string_var80_t;                  {single-token version of input string}
@@ -197,7 +197,7 @@ begin
 procedure wtk (                        {write Pascal string as token to output line}
   in out  os: outstate_t;              {output file writing state}
   in      str: string);                {the string to write}
-  val_param;
+  val_param; internal;
 
 var
   vstr: string_var80_t;
@@ -218,7 +218,7 @@ begin
 procedure wint (                       {write integer token to output line}
   in out  os: outstate_t;              {output file writing state}
   in      ii: sys_int_machine_t);      {integer value to write}
-  val_param;
+  val_param; internal;
 
 var
   tk: string_var32_t;
@@ -242,7 +242,7 @@ procedure wfpf (                       {write FP token to output, N fraction dig
   in out  os: outstate_t;              {output file writing state}
   in      fp: real;                    {the floating point value to write}
   in      nf: sys_int_machine_t);      {number of fraction digits}
-  val_param;
+  val_param; internal;
 
 var
   tk: string_var32_t;
@@ -265,7 +265,7 @@ procedure wfps (                       {write FP token to output, N significant 
   in out  os: outstate_t;              {output file writing state}
   in      fp: real;                    {the floating point value to write}
   in      sig: sys_int_machine_t);     {number of significant digits to write}
-  val_param;
+  val_param; internal;
 
 var
   tk: string_var32_t;
@@ -287,7 +287,7 @@ begin
 procedure wonoff (                     {write boolean as ON or OFF to output line}
   in out  os: outstate_t;              {output file writing state}
   in      b: boolean);                 {the value to write}
-  val_param;
+  val_param; internal;
 
 begin
   if b
@@ -304,7 +304,7 @@ begin
 }
 procedure block_start (                {start a new subordinate block}
   in out  os: outstate_t);             {output file writing state to update}
-  val_param;
+  val_param; internal;
 
 begin
   os.blklev := os.blklev + 1;          {indicate one more level within nested blocks}
@@ -319,7 +319,7 @@ begin
 }
 procedure block_end (                  {end the current subordinate block}
   in out  os: outstate_t);             {output file writing state to update}
-  val_param;
+  val_param; internal;
 
 begin
   if os.blklev > 0                     {not already at top nesting level ?}
@@ -335,7 +335,7 @@ begin
 procedure wspace (                     {write RENDlib coordinate space name}
   in out  os: outstate_t;              {output file writing state}
   in      space: rend_space_k_t);      {coordinate space ID}
-  val_param;
+  val_param; internal;
 
 begin
   case space of
@@ -365,7 +365,7 @@ otherwise
 procedure wendstyle (                  {write vector end style}
   in out  os: outstate_t;              {output file writing state}
   in      style: rend_end_style_t);    {the style to write}
-  val_param;
+  val_param; internal;
 
 begin
   case style.style of                  {what top level style is this ?}
@@ -387,7 +387,7 @@ otherwise
 procedure wtorg (                      {write RENDlib text anchor origin name}
   in out  os: outstate_t;              {output file writing state}
   in      torg: rend_torg_k_t);        {text anchor origin ID}
-  val_param;
+  val_param; internal;
 
 begin
   case torg of
@@ -415,7 +415,7 @@ rend_torg_up_k: wtk (os, 'UP');
 procedure displ_file_write_displ (     {write single display list to output file}
   in out  os: outstate_t;              {output file writing state}
   in      displ: displ_t);             {the display list to write}
-  val_param;
+  val_param; internal;
 
 var
   item_p: displ_item_p_t;              {pointer to current item in the list}
