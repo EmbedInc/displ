@@ -22,6 +22,11 @@ const
   displ_stat_extratk_k = 14;           {extra token}
   displ_stat_badtpid_k = 15;           {invalid TPARM ID}
   displ_stat_duptparm_k = 16;          {duplicate TPARM  definition}
+  displ_stat_badlistid_k = 17;         {invalid list ID}
+  displ_stat_undeflist_k = 18;         {undefined list referenced}
+  displ_stat_undefcol_k = 19;          {undefined color referenced}
+  displ_stat_undefvp_k = 20;           {undefined VPARM referenced}
+  displ_stat_undeftp_k = 21;           {undefined TPARM referenced}
 
 type
   displ_item_p_t = ^displ_item_t;

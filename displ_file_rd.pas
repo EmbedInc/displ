@@ -56,6 +56,7 @@ type
     buf: string_var80_t;               {current input line}
     p: string_index_t;                 {parse index into BUF}
     eof: boolean;                      {end of file has been read, CONN closed}
+    lret: boolean;                     {the current input line has been returned}
     nlists: sys_int_machine_t;         {number of list definitions in the file}
     lists_p: lists_p_t;                {pointer to lists list}
     ncolors: sys_int_machine_t;        {number of color definitions in the file}
@@ -94,6 +95,7 @@ begin
   rd.buf.len := 0;
   rd.p := 1;
   rd.eof := false;
+  rd.lret := true;
   rd.nlists := 0;
   rd.lists_p := nil;
   rd.ncolors := 0;
@@ -159,6 +161,9 @@ function rdline (                      {read next line from input file}
   :boolean;                            {at same nesting level, not popped up}
   val_param; internal;
 
+label
+  get_line, have_line;
+
 begin
   if rd.eof then begin                 {previously hit end of file ?}
     sys_error_none (stat);
@@ -167,38 +172,45 @@ begin
     end;
   rdline := true;                      {init to continuing at same nesting level}
 
-  while true do begin                  {back here to read another line from file}
-    file_read_text (rd.conn, rd.buf, stat); {read next line from file}
-    if file_eof(stat) then begin       {hit end of file ?}
-      file_close (rd.conn);            {close the file}
-      rd.eof := true;                  {remember that hit EOF and file closed}
-      rd.buf.len := 0;                 {as if empty line}
-      rd.p := 1;
-      rdline := false;                 {EOF is always as if popping up a level}
-      return;                          {return indicating up one level}
-      end;
-    if sys_error(stat) then return;    {hard error ?}
-    string_unpad (rd.buf);             {delete all trailing spaces from input line}
-    if rd.buf.len <= 0 then next;      {ignore blank lines}
-    rd.p := 1;                         {init new input line parse index}
-    while rd.buf.str[rd.p] = ' ' do begin {skip over leading blanks}
-      rd.p := rd.p + 1;
-      end;
-    if rd.buf.str[rd.p] = '*' then next; {ignore comment lines}
-    rd.llev := (rd.p - 1) div 2;       {make nesting level of this line from indentation}
-    if ((rd.llev * 2) + 1) <> rd.p then begin {invalid indentation ?}
-      sys_stat_set (displ_subsys_k, displ_stat_badindent_k, stat); {set error status}
-      sys_stat_parm_vstr (rd.conn.tnam, stat);
-      sys_stat_parm_int (rd.conn.lnum, stat);
-      return;                          {return with bad indentation error}
-      end;
-    if rd.llev = rd.level then return; {new line is at existing nesting level ?}
-    if rd.llev < rd.level then begin   {new line is at higher level ?}
-      rd.level := rd.level - 1;        {pop up one level}
-      rdline := false;                 {indicate the current level has ended}
-      return;
-      end;
-    end;                               {ignore this line, back to read next}
+  if not rd.lret then goto have_line;  {already have input line from last time ?}
+
+get_line:                              {back here to get the next relevant input line}
+  file_read_text (rd.conn, rd.buf, stat); {read next line from file}
+  if file_eof(stat) then begin         {hit end of file ?}
+    file_close (rd.conn);              {close the file}
+    rd.eof := true;                    {remember that hit EOF and file closed}
+    rd.buf.len := 0;                   {as if empty line}
+    rd.p := 1;
+    rdline := false;                   {EOF is always as if popping up a level}
+    return;                            {return indicating up one level}
+    end;
+  if sys_error(stat) then return;      {hard error ?}
+  string_unpad (rd.buf);               {delete all trailing spaces from input line}
+  if rd.buf.len <= 0 then goto get_line; {ignore blank lines}
+  rd.p := 1;                           {init new input line parse index}
+  while rd.buf.str[rd.p] = ' ' do begin {skip over leading blanks}
+    rd.p := rd.p + 1;
+    end;
+  if rd.buf.str[rd.p] = '*' then goto get_line; {ignore comment lines}
+  rd.llev := (rd.p - 1) div 2;         {make nesting level of this line from indentation}
+  if ((rd.llev * 2) + 1) <> rd.p then begin {invalid indentation ?}
+    sys_stat_set (displ_subsys_k, displ_stat_badindent_k, stat); {set error status}
+    sys_stat_parm_vstr (rd.conn.tnam, stat);
+    sys_stat_parm_int (rd.conn.lnum, stat);
+    return;                            {return with bad indentation error}
+    end;
+  rd.lret := false;                    {init to this line not returned}
+
+have_line:                             {a new valid line is in the buffer}
+  if rd.llev = rd.level then begin     {new line is at existing nesting level ?}
+    rd.lret := true;                   {remember that this line was returned}
+    return;                            {return with the new line}
+    end;
+
+  if rd.llev > rd.level then goto get_line; {ignore lines at lower nesting levels}
+
+  rd.level := rd.level - 1;            {pop up one level}
+  rdline := false;                     {indicate the current level has ended}
   end;
 {
 ********************************************************************************
@@ -257,7 +269,7 @@ begin
   p := rd.p;                           {save original parse index}
   if not rdtoken (rd, tk) then begin   {no token here, at end of line ?}
     sys_error_none (stat);             {indicate no error}
-    end_of_line := false;              {indicate was at end of line}
+    end_of_line := true;               {indicate was at end of line}
     return;
     end;
 
@@ -697,7 +709,7 @@ label
   err_syn, err_missing, err_atline;
 
 begin
-  cmd.max := size_char(cmd.str);
+  cmd.max := size_char(cmd.str);       {init local var string}
 
   rdint (rd, id, stat);                {get the TPARM ID}
   if sys_error(stat) then return;
@@ -808,6 +820,42 @@ err_atline:
 {
 ********************************************************************************
 *
+*   Local subroutine RD_VECT (RD, LEDIT, STAT)
+*
+*   Read a chain of vectors definition from the input file and add it to the
+*   list being edited at LEDIT.  The edit position will be moved to the new
+*   vectors chain.  The VECT keyword has just bee read.
+}
+procedure rd_vect (                    {read vectors chain, add to list}
+  in out  rd: rd_t;                    {input file reading state}
+  in out  ledit: displ_edit_t;         {list editing state}
+  in out  stat: sys_err_t);            {completion status, set to no err on entry}
+  val_param; internal;
+
+var
+  edvect: displ_edvect_t;              {VECT item editing state}
+  x, y: real;                          {2D coordinate}
+
+begin
+  if not end_of_line (rd, stat) then return; {must be end of VECT command}
+
+  displ_item_new (ledit);              {create new list item}
+  displ_item_vect (ledit);             {make the new item a vectors list}
+  displ_edvect_init (edvect, ledit.item_p^); {init VECT item editing state}
+
+  block_start (rd);                    {down one level into VECT block}
+  while rdline (rd, stat) do begin     {back here each new line in the VECT block}
+    rdfp (rd, x, stat);                {read X}
+    if sys_error(stat) then return;
+    rdfp (rd, y, stat);                {read Y}
+    if sys_error(stat) then return;
+    if not end_of_line (rd, stat) then return;
+    displ_edvect_add (edvect, x, y);   {add this coordinate to vectors chain}
+    end;                               {back for next command in VECT block}
+  end;
+{
+********************************************************************************
+*
 *   Local subroutine RD_LIST (RD, STAT)
 *
 *   Read and save a display list.  The LIST command keyword has been read.
@@ -817,7 +865,124 @@ procedure rd_list (                    {read LIST command}
   in out  stat: sys_err_t);            {completion status, set to no err on entry}
   val_param; internal;
 
+var
+  id: sys_int_machine_t;               {1-N ID}
+  list_p: displ_p_t;                   {pointer to list being added to}
+  ledit: displ_edit_t;                 {list editing state}
+  cmd: string_var32_t;                 {command name}
+  pick: sys_int_machine_t;             {number of keyword picked from list}
+
+label
+  err_syn, err_atline;
+
 begin
+  cmd.max := size_char(cmd.str);       {init local var string}
+
+  rdint (rd, id, stat);                {get the ID of this list}
+  if sys_error(stat) then return;
+  if not end_of_line (rd, stat) then return;
+
+  if (id < 1) or (id > rd.nlists) then begin
+    sys_stat_set (displ_subsys_k, displ_stat_badlistid_k, stat);
+    sys_stat_parm_int (id, stat);
+    goto err_atline;
+    end;
+  list_p := rd.lists_p^[id];           {get pointer to the list}
+  if list_p = nil then begin           {list doesn't previously exist ?}
+    util_mem_grab (                    {allocate memory for the list descriptor}
+      sizeof(list_p^), rd.lists_p^[1]^.mem_p^, true, list_p);
+    displ_list_new (rd.lists_p^[1]^.mem_p^, list_p^); {initialize the list}
+    list_p^.id := id;                  {indicate our internal ID for this list}
+    rd.lists_p^[id] := list_p;         {save pointer to list of this ID}
+    end;
+
+  displ_edit_init (ledit, list_p^);    {init list editing state to start of list}
+
+  block_start (rd);                    {down one level into LIST block}
+  while rdline (rd, stat) do begin     {back here each new line in the LIST block}
+    if not rdkeyw (rd, cmd) then goto err_syn; {get this command name}
+    string_tkpick80 (cmd,              {pick the command name from the list}
+      'COLOR VPARM TPARM VECT',
+      pick);
+    case pick of                       {which command is it}
+
+1:    begin                            {COLOR}
+        rdint (rd, id, stat);          {get the color ID}
+        if sys_error(stat) then return;
+        if (id < 1) or (id > rd.ncolors) then begin
+          sys_stat_set (displ_subsys_k, displ_stat_badcolid_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        if rd.colors_p^[id] = nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_undefcol_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        list_p^.rend.color_p := rd.colors_p^[id]; {set list default color}
+        end;
+
+2:    begin                            {VPARM}
+        rdint (rd, id, stat);          {get the VPARM ID}
+        if sys_error(stat) then return;
+        if (id < 1) or (id > rd.nvparms) then begin
+          sys_stat_set (displ_subsys_k, displ_stat_badvpid_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        if rd.vparms_p^[id] = nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_undefvp_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        list_p^.rend.vect_parm_p := rd.vparms_p^[id]; {set list default VPARM}
+        end;
+
+3:    begin                            {TPARM}
+        rdint (rd, id, stat);          {get the TPARM ID}
+        if sys_error(stat) then return;
+        if (id < 1) or (id > rd.ntparms) then begin
+          sys_stat_set (displ_subsys_k, displ_stat_badtpid_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        if rd.tparms_p^[id] = nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_undeftp_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        list_p^.rend.text_parm_p := rd.tparms_p^[id]; {set list default TPARM}
+        end;
+
+4:    begin                            {VECT}
+        rd_vect (rd, ledit, stat);     {read vectors chain, add it to the list}
+        if sys_error(stat) then return;
+        next;                          {back for next command in this LIST block}
+        end;
+
+otherwise                              {unrecognized LIST subcommand}
+      sys_stat_set (displ_subsys_k, displ_stat_badcmd_k, stat);
+      sys_stat_parm_vstr (cmd, stat);
+      goto err_atline;
+      end;                             {end of LIST subcommand cases}
+
+    if not end_of_line (rd, stat) then return;
+    end;                               {back for next LIST subcommand}
+
+  return;                              {normal exit point}
+{
+*   Error, bad syntax in file.
+}
+err_syn:
+  sys_stat_set (displ_subsys_k, displ_stat_errsyn_k, stat);
+  goto err_atline;
+{
+*   An error has occurred and STAT has been partially set.  The current line
+*   number and file name will be added to STAT before returning to the caller
+*   with the error.
+}
+err_atline:
+  err_line_file (rd, stat);
   end;
 {
 ********************************************************************************
@@ -957,6 +1122,8 @@ otherwise                              {unrecognized command name}
       sys_stat_parm_vstr (cmd, stat);
       goto err_atline;
       end;                             {end of command cases}
+    if sys_error(stat) then goto leave;
+
     end;                               {back to get and process the next command}
   goto leave;                          {exit with current STAT}
 {

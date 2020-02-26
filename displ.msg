@@ -54,3 +54,21 @@ msg err16
   lan english -def
     Duplicate definition of text parameters %p1i, on line %p2i of file
     "%p3s".
+msg err17
+  lan english -def
+    Invalid list ID of %p1i on line %p2i of file "%p3s".
+msg err18
+  lan english -def
+    Display list %p1i is undefined, referenced on line %p2i of file
+    "%p3s".
+msg err19
+  lan english -def
+    Color %p1i is undefined, referenced on line %p2i of file "%p3s".
+msg err20
+  lan english -def
+    Vector parameters set %p1i is undefined, referenced on line %p2i of
+    file "%p3s".
+msg err21
+  lan english -def
+    Text parameters set %p1i is undefined, referenced on line %p2i of file
+    "%p3s".
