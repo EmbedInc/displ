@@ -663,7 +663,8 @@ begin
         end;
 
 otherwise
-      sys_stat_set (displ_subsys_k, displ_stat_badval_k, stat);
+      sys_stat_set (displ_subsys_k, displ_stat_badcmd_k, stat);
+
       goto err_atline;
       end;                             {end of subcommand cases}
     if sys_error(stat) then return;
@@ -835,8 +836,16 @@ procedure rd_vect (                    {read vectors chain, add to list}
 var
   edvect: displ_edvect_t;              {VECT item editing state}
   x, y: real;                          {2D coordinate}
+  cmd: string_var32_t;                 {command name}
+  pick: sys_int_machine_t;             {number of keyword picked from list}
+  id: sys_int_machine_t;
+
+label
+  err_syn, err_atline;
 
 begin
+  cmd.max := size_char(cmd.str);
+
   if not end_of_line (rd, stat) then return; {must be end of VECT command}
 
   displ_item_new (ledit);              {create new list item}
@@ -844,14 +853,74 @@ begin
   displ_edvect_init (edvect, ledit.item_p^); {init VECT item editing state}
 
   block_start (rd);                    {down one level into VECT block}
-  while rdline (rd, stat) do begin     {back here each new line in the VECT block}
-    rdfp (rd, x, stat);                {read X}
-    if sys_error(stat) then return;
-    rdfp (rd, y, stat);                {read Y}
+  while rdline (rd, stat) do begin     {loop over all the VPARM subcommands}
+    if not rdkeyw (rd, cmd) then goto err_syn; {get this command name}
+    string_tkpick80 (cmd,              {pick the command name from the list}
+      'COLOR VPARM P',
+      pick);
+    case pick of                       {which command is it}
+
+1:    begin                            {COLOR}
+        rdint (rd, id, stat);          {get the color ID}
+        if sys_error(stat) then return;
+        if (id < 1) or (id > rd.ncolors) then begin
+          sys_stat_set (displ_subsys_k, displ_stat_badcolid_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        if rd.colors_p^[id] = nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_undefcol_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        ledit.item_p^.vect_color_p := rd.colors_p^[id]; {set color}
+        end;
+
+2:    begin                            {VPARM}
+        rdint (rd, id, stat);          {get the VPARM ID}
+        if sys_error(stat) then return;
+        if (id < 1) or (id > rd.nvparms) then begin
+          sys_stat_set (displ_subsys_k, displ_stat_badvpid_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        if rd.vparms_p^[id] = nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_undefvp_k, stat);
+          sys_stat_parm_int (id, stat);
+          goto err_atline;
+          end;
+        ledit.item_p^.vect_parm_p := rd.vparms_p^[id]; {set vector parameters}
+        end;
+
+3:    begin                            {P}
+        rdfp (rd, x, stat);            {read X}
+        if sys_error(stat) then return;
+        rdfp (rd, y, stat);            {read Y}
+        if sys_error(stat) then return;
+        displ_edvect_add (edvect, x, y); {add this coordinate to vectors chain}
+        end;
+
+otherwise
+      sys_stat_set (displ_subsys_k, displ_stat_badcmd_k, stat);
+      sys_stat_parm_vstr (cmd, stat);
+      goto err_atline;
+      end;                             {end of subcommand cases}
     if sys_error(stat) then return;
     if not end_of_line (rd, stat) then return;
-    displ_edvect_add (edvect, x, y);   {add this coordinate to vectors chain}
-    end;                               {back for next command in VECT block}
+    end;                               {back for next VPARM subcommand}
+  return;                              {normal return point, no error}
+{
+*   Error, bad syntax in file.
+}
+err_syn:
+  sys_stat_set (displ_subsys_k, displ_stat_errsyn_k, stat);
+  goto err_atline;
+{
+*   Error exit to add line number and file name to STAT.  STAT must already be
+*   set, and the next two parameters must be the line number and the file name.
+}
+err_atline:
+  err_line_file (rd, stat);            {add line number and file name to STAT}
   end;
 {
 ********************************************************************************

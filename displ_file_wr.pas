@@ -472,12 +472,27 @@ displ_item_vect_k: begin               {chain of vectors}
         wstr (os, 'VECT');             {start chain of vectors}
         if not wline(os) then return;
         block_start (os);              {now in VECT block}
+
+        if item_p^.vect_color_p <> nil then begin {color specified ?}
+          wtk (os, 'COLOR');
+          wint (os, item_p^.vect_color_p^.id);
+          if not wline(os) then return;
+          end;
+
+        if item_p^.vect_parm_p <> nil then begin {vector parameters specified ?}
+          wtk (os, 'VPARM');
+          wint (os, item_p^.vect_parm_p^.id);
+          if not wline(os) then return;
+          end;
+
         while coor2d_p <> nil do begin {loop over the chain of coordinates}
+          wtk (os, 'P');
           wfps (os, coor2d_p^.x, 7);   {write X}
           wfps (os, coor2d_p^.y, 7);   {write Y}
           if not wline(os) then return;
           coor2d_p := coor2d_p^.next_p; {advance to next coordinate in chain}
           end;                         {back to process this new coordinate}
+
         block_end (os);                {now no longer in VECT block}
         end;
 
