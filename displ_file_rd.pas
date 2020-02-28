@@ -49,8 +49,9 @@ type
     array [1..1] of displ_tparm_p_t;
 
   rd_t = record                        {DISPL file reading state}
+    mem_perm_p: util_mem_context_p_t;  {use for mem returned to caller}
+    mem_temp_p: util_mem_context_p_t;  {use for temp mem while reading file}
     conn: file_conn_t;                 {connection to the file}
-    mem_p: util_mem_context_p_t;       {points to context for reading state mem}
     level: sys_int_machine_t;          {current data reading nesting level, 0 = top}
     llev: sys_int_machine_t;           {nesting level of the current input line}
     buf: string_var80_t;               {current input line}
@@ -88,7 +89,9 @@ begin
     stat);
   if sys_error(stat) then return;
 
-  util_mem_context_get (mem, rd.mem_p); {create our private memory context}
+  rd.mem_perm_p := addr(mem);          {save pointer to context for mem to return to caller}
+  util_mem_context_get (               {create our private temporary memory context}
+    rd.mem_perm_p^, rd.mem_temp_p);
 
   rd.level := 0;                       {init the remaining file reading state}
   rd.buf.max := size_char(rd.buf.str);
@@ -123,7 +126,7 @@ begin
     rd.eof := true;
     end;
 
-  util_mem_context_del (rd.mem_p);     {deallocate all reading state dyn memory}
+  util_mem_context_del (rd.mem_temp_p); {deallocate all reading state dyn memory}
   end;
 {
 ********************************************************************************
@@ -577,7 +580,7 @@ begin
     end;
 
   util_mem_grab (                      {allocate memory for the new color descriptor}
-    sizeof (col_p^), rd.mem_p^, false, col_p);
+    sizeof (col_p^), rd.mem_perm_p^, false, col_p);
 
   rdfp (rd, col_p^.red, stat);         {get the color values}
   if sys_error(stat) then return;
@@ -632,7 +635,7 @@ begin
   if not end_of_line (rd, stat) then return;
 
   util_mem_grab (                      {allocate memory for the new descriptor}
-    sizeof (vparm_p^), rd.mem_p^, false, vparm_p);
+    sizeof (vparm_p^), rd.mem_perm_p^, false, vparm_p);
 
   block_start (rd);                    {down into VPARM block}
   while rdline (rd, stat) do begin     {loop over all the VPARM subcommands}
@@ -727,7 +730,7 @@ begin
   if not end_of_line (rd, stat) then return;
 
   util_mem_grab (                      {allocate memory for the new descriptor}
-    sizeof (tparm_p^), rd.mem_p^, false, tparm_p);
+    sizeof (tparm_p^), rd.mem_perm_p^, false, tparm_p);
   tparm_p^.tparm.font.max := size_char(tparm_p^.tparm.font.str);
   tparm_p^.tparm.font.len := 0;
 
@@ -959,8 +962,8 @@ begin
   list_p := rd.lists_p^[id];           {get pointer to the list}
   if list_p = nil then begin           {list doesn't previously exist ?}
     util_mem_grab (                    {allocate memory for the list descriptor}
-      sizeof(list_p^), rd.lists_p^[1]^.mem_p^, true, list_p);
-    displ_list_new (rd.lists_p^[1]^.mem_p^, list_p^); {initialize the list}
+      sizeof(list_p^), rd.mem_perm_p^, true, list_p);
+    displ_list_new (rd.mem_perm_p^, list_p^); {initialize the list}
     list_p^.id := id;                  {indicate our internal ID for this list}
     rd.lists_p^[id] := list_p;         {save pointer to list of this ID}
     end;
@@ -1101,7 +1104,7 @@ begin
         rd.nlists := ii;               {save number of lists}
         util_mem_grab (                {allocate mem for lists list}
           sizeof(rd.lists_p^[1]) * rd.nlists, {amount of memory to allocate}
-          rd.mem_p^,                   {memory context}
+          rd.mem_temp_p^,              {memory context}
           false,                       {will not individually deallocate}
           rd.lists_p);                 {returned pointer to the new memory}
         rd.lists_p^[1] := addr(displ); {set pointer to the top level list}
@@ -1122,7 +1125,7 @@ begin
         rd.ncolors := ii;              {save number of colors}
         util_mem_grab (                {allocate mem for colors list}
           sizeof(rd.colors_p^[1]) * rd.ncolors, {amount of memory to allocate}
-          rd.mem_p^,                   {memory context}
+          rd.mem_temp_p^,              {memory context}
           false,                       {will not individually deallocate}
           rd.colors_p);                {returned pointer to the new memory}
         for ii := 1 to rd.ncolors do begin {init all colors to undefined}
@@ -1142,7 +1145,7 @@ begin
         rd.nvparms := ii;              {save number of vparms}
         util_mem_grab (                {allocate mem for vparms list}
           sizeof(rd.vparms_p^[1]) * rd.nvparms, {amount of memory to allocate}
-          rd.mem_p^,                   {memory context}
+          rd.mem_temp_p^,              {memory context}
           false,                       {will not individually deallocate}
           rd.vparms_p);                {returned pointer to the new memory}
         for ii := 1 to rd.nvparms do begin {init all vparms to undefined}
@@ -1162,7 +1165,7 @@ begin
         rd.ntparms := ii;              {save number of tparms}
         util_mem_grab (                {allocate mem for tparms list}
           sizeof(rd.tparms_p^[1]) * rd.ntparms, {amount of memory to allocate}
-          rd.mem_p^,                   {memory context}
+          rd.mem_temp_p^,              {memory context}
           false,                       {will not individually deallocate}
           rd.tparms_p);                {returned pointer to the new memory}
         for ii := 1 to rd.ntparms do begin {init all tparms to undefined}
