@@ -530,11 +530,18 @@ var
   col_p: displ_dagl_color_p_t;         {points to curr color list entry}
   vparm_p: displ_dagl_vparm_p_t;       {points to curr vect parms list entry}
   tparm_p: displ_dagl_tparm_p_t;       {points to curr text parms list entry}
+  tnam: string_treename_t;             {scratch full file pathname}
+  dir: string_treename_t;              {scratch directory name}
+  lnam: string_leafname_t;             {scratch file leafname}
 
 label
   abort;
 
 begin
+  tnam.max := size_char(tnam.str);     {init local var strings}
+  dir.max := size_char(dir.str);
+  lnam.max := size_char(lnam.str);
+
   displ_file_open (fnam, os, stat);    {open file, set up output file writing state}
   if sys_error(stat) then return;
 
@@ -651,7 +658,20 @@ begin
     if not wline(os) then goto abort;
 
     wtk (os, 'FONT');
-    wvtk (os, tparm_p^.tparm_p^.tparm.font);
+    string_pathname_split (            {make directory and leaf names of font file}
+      tparm_p^.tparm_p^.tparm.font, dir, lnam);
+    string_treename (                  {make full treename of default fonts directory}
+      string_v('(cog)fonts'(0)), tnam);
+    if string_equal(dir, tnam)
+      then begin                       {font file is in default directory}
+        string_vstring (tnam, '(cog)/'(0), -1); {build portable font file pathname}
+        string_append (tnam, lnam);
+        wvtk (os, tnam);
+        end
+      else begin                       {font file is not in default place}
+        wvtk (os, tparm_p^.tparm_p^.tparm.font);
+        end
+      ;
     if not wline(os) then goto abort;
 
     wtk (os, 'COOR');
