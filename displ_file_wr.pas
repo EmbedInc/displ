@@ -664,7 +664,7 @@ begin
       string_v('(cog)fonts'(0)), tnam);
     if string_equal(dir, tnam)
       then begin                       {font file is in default directory}
-        string_vstring (tnam, '(cog)/'(0), -1); {build portable font file pathname}
+        string_vstring (tnam, '(cog)fonts/'(0), -1); {build portable font file pathname}
         string_append (tnam, lnam);
         wvtk (os, tnam);
         end
@@ -683,7 +683,7 @@ begin
     if not wline(os) then goto abort;
 
     wtk (os, 'ENORG');
-    wtorg (os, tparm_p^.tparm_p^.tparm.start_org);
+    wtorg (os, tparm_p^.tparm_p^.tparm.end_org);
     if not wline(os) then goto abort;
 
     wtk (os, 'POLY');
