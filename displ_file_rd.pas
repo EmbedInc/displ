@@ -658,7 +658,7 @@ begin
         end;
 
 4:    begin                            {END}
-        rdendstyle (rd, vparm_p^.vparm.start_style, stat);
+        rdendstyle (rd, vparm_p^.vparm.end_style, stat);
         end;
 
 5:    begin                            {SUBPIX}

@@ -3,6 +3,7 @@
 module displ_rend;
 define displ_rend_init;
 define displ_rend_resolve;
+define displ_rend_default;
 define displ_rend_set_color;
 define displ_rend_set_vect;
 define displ_rend_set_text;
@@ -52,15 +53,36 @@ begin
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_REND_SET_COLOR (COLOR_P, DRAW)
+*   Subroutine DISPL_REND_DEFAULT (PAR, HERE, DEF)
+*
+*   Create default drawing settings for a new lower level.  PAR are the parent
+*   default draw settings, HERE are the settings specified at the new level,
+*   and DEF is the composite result for the new level.
+}
+procedure displ_rend_default (         {make subordinate default draw settings}
+  in      par: displ_rend_t;           {parent default settings}
+  in      here: displ_rend_t;          {settings specified for this level}
+  out     def: displ_rend_t);          {resulting defaults for this level}
+  val_param;
+
+begin
+  def := here;                         {init to new settings}
+  displ_rend_resolve (def, par);       {default to parent when not specified}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine DISPL_REND_SET_COLOR (COLOR_P, DRDEF, DRCUR)
 *
 *   Set the RENDlib current color as appropriate.  COLOR_P can be NIL, or point
-*   to the explicit color settings to use.  DRAW contains the current and
-*   default settings.
+*   to the explicit color settings to use.  DRDEF contains the default settings.
+*   DRCUR contains the current settings, which will be updated if changes are
+*   made.
 }
 procedure displ_rend_set_color (       {set color as appropriate}
   in      color_p: displ_color_p_t;    {NIL or points to explicit setting}
-  in out  draw: displ_draw_t);         {current drawing state, may be updated}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 var
@@ -73,7 +95,7 @@ begin
   set_p := color_p;                    {try explicit setting}
   if set_p <> nil then goto hset;
 
-  set_p := draw.def.color_p;           {try default setting}
+  set_p := drdef.color_p;              {try default setting}
   if set_p <> nil then goto hset;
 
   return;                              {no setting found, leave as is}
@@ -81,24 +103,26 @@ begin
 *   SET_P is pointing to the desired setting.
 }
 hset:
-  if set_p = draw.curr.color_p then return; {set as desired, nothing to do ?}
+  if set_p = drcur.color_p then return; {set as desired, nothing to do ?}
 
   rend_set.rgba^ (                     {change the setting}
     set_p^.red, set_p^.grn, set_p^.blu, set_p^.opac);
-  draw.curr.color_p := set_p;          {update pointer to current setting}
+  drcur.color_p := set_p;              {update pointer to current setting}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_REND_SET_VECT (VECT_P, DRAW)
+*   Subroutine DISPL_REND_SET_VECT (VECT_P, DRDEF, DRCUR)
 *
-*   Set the RENDlib current vector drawing state as appropriate.  VECT_P can be
-*   NIL, or point to the explicit vector settings to use.  DRAW contains the
-*   current and default settings.
+*   Set the RENDlib current vector drawing parameters as appropriate.  VECT_P
+*   can be NIL, or point to the explicit color settings to use.  DRDEF contains
+*   the default settings.  DRCUR contains the current settings, which will be
+*   updated if changes are made.
 }
 procedure displ_rend_set_vect (        {set vector parameters as appropriate}
   in      vect_p: displ_vparm_p_t;     {NIL or points to explicit setting}
-  in out  draw: displ_draw_t);         {current drawing state, may be updated}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 var
@@ -111,7 +135,7 @@ begin
   set_p := vect_p;                     {try explicit setting}
   if set_p <> nil then goto hset;
 
-  set_p := draw.def.vect_parm_p;       {try default setting}
+  set_p := drdef.vect_parm_p;          {try default setting}
   if set_p <> nil then goto hset;
 
   return;                              {no setting found, leave as is}
@@ -119,24 +143,26 @@ begin
 *   SET_P is pointing to the desired setting.
 }
 hset:
-  if set_p = draw.curr.vect_parm_p     {already set as desired, nothing to do ?}
+  if set_p = drcur.vect_parm_p         {already set as desired, nothing to do ?}
     then return;
 
   rend_set.vect_parms^ (set_p^.vparm); {change the setting}
-  draw.curr.vect_parm_p := set_p;      {update pointer to current setting}
+  drcur.vect_parm_p := set_p;          {update pointer to current setting}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_REND_SET_TEXT (TEXT_P, DRAW)
+*   Subroutine DISPL_REND_SET_TEXT (TEXT_P, DRDEF, DRCUR)
 *
-*   Set the RENDlib current text drawing state as appropriate.  TEXT_P can be
-*   NIL, or point to the explicit text settings to use.  DRAW contains the
-*   current and default settings.
+*   Set the RENDlib current text drawing parameters as appropriate.  TEXT_P can
+*   be NIL, or point to the explicit color settings to use.  DRDEF contains the
+*   default settings.  DRCUR contains the current settings, which will be
+*   updated if changes are made.
 }
 procedure displ_rend_set_text (        {set text parameters as appropriate}
   in      text_p: displ_tparm_p_t;     {NIL or points to explicit setting}
-  in out  draw: displ_draw_t);         {current drawing state, may be updated}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 var
@@ -149,7 +175,7 @@ begin
   set_p := text_p;                     {try explicit setting}
   if set_p <> nil then goto hset;
 
-  set_p := draw.def.text_parm_p;       {try default setting}
+  set_p := drdef.text_parm_p;          {try default setting}
   if set_p <> nil then goto hset;
 
   return;                              {no setting found, leave as is}
@@ -157,9 +183,9 @@ begin
 *   SET_P is pointing to the desired setting.
 }
 hset:
-  if set_p = draw.curr.text_parm_p     {already set as desired, nothing to do ?}
+  if set_p = drcur.text_parm_p         {already set as desired, nothing to do ?}
     then return;
 
   rend_set.text_parms^ (set_p^.tparm); {change the setting}
-  draw.curr.text_parm_p := set_p;      {update pointer to current setting}
+  drcur.text_parm_p := set_p;          {update pointer to current setting}
   end;

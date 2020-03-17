@@ -20,7 +20,8 @@ procedure displ_draw_item (            {draw item, current RENDlib state is defa
   val_param;
 
 var
-  draw: displ_draw_t;                  {resolved drawing state}
+  drdef: displ_rend_t;                 {default draw settings}
+  drcur: displ_rend_t;                 {current draw settings}
   color: displ_color_t;                {default color}
   vect_parm: displ_vparm_t;            {default vector drawing parameters}
   text_parm: displ_tparm_t;            {default text drawing parameters}
@@ -34,46 +35,46 @@ begin
     color.red, color.grn, color.blu, color.opac);
   rend_get.vect_parms^ (vect_parm.vparm); {get the current vector drawing parameters}
   rend_get.text_parms^ (text_parm.tparm); {get the current text drawing parameters}
+
+  displ_rend_init (drcur);             {init current settings descriptor}
+  drcur.color_p := addr(color);        {save the current settings}
+  drcur.vect_parm_p := addr(vect_parm);
+  drcur.text_parm_p := addr(text_parm);
 {
-*   Fill in the resolved drawing state.
+*   Resolve the default draw settings.
 }
-  displ_rend_init (draw.curr);         {make sure all fields are set}
-  draw.curr.color_p := addr(color);    {init current settings}
-  draw.curr.vect_parm_p := addr(vect_parm);
-  draw.curr.text_parm_p := addr(text_parm);
-
-  displ_rend_init (draw.def);          {make sure all fields are set}
+  displ_rend_init (drdef);             {make sure all fields are set}
   if item.list_p <> nil then begin     {parent list exists ?}
-    displ_rend_resolve (draw.def, item.list_p^.rend); {apply defaults from parent list}
+    displ_rend_resolve (drdef, item.list_p^.rend); {apply defaults from parent list}
     end;
-  displ_rend_resolve (draw.def, draw.curr); {use current settings for remaining defaults}
+  displ_rend_resolve (drdef, drcur);   {use current settings for remaining defaults}
 
-  displ_draw_itemst (item, draw);      {actually draw the item, pass drawing state}
-
+  displ_draw_itemst (item, drdef, drcur); {actually draw the item}
   rend_set.exit_rend^;                 {pop back out of graphics mode}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_DRAW_ITEMST (ITEM, DRAW)
+*   Subroutine DISPL_DRAW_ITEMST (ITEM, DRDEF, DRCUR)
 *
 *   Low level routine to draw one display list item.  The drawing state is
 *   supplied by the caller.
 }
 procedure displ_draw_itemst (          {draw item, drawing state supplied}
   in      item: displ_item_t;          {the item to draw}
-  in out  draw: displ_draw_t);         {drawing state}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 begin
   case item.item of                    {what kind of item is this ?}
 
 displ_item_list_k: begin
-      displ_draw_item_list (item, draw); {draw the LIST item}
+      displ_draw_item_list (item, drdef, drcur); {draw the LIST item}
       end;
 
 displ_item_vect_k: begin
-      displ_draw_item_vect (item, draw); {draw the VECT item}
+      displ_draw_item_vect (item, drdef, drcur); {draw the VECT item}
       end;
 
     end;                               {end of item type cases}
@@ -81,46 +82,38 @@ displ_item_vect_k: begin
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_DRAW_ITEM_LIST (ITEM, DRAW)
+*   Subroutine DISPL_DRAW_ITEM_LIST (ITEM, DRDEF, DRCUR)
 *
-*   Draw the subordinate list item ITEM.  DRAW is the drawing state.
+*   Draw the subordinate list item ITEM.
 *
 *   This is a low level routine that requires ITEM to be of type LIST, which is
 *   not checked.
 }
 procedure displ_draw_item_list (       {draw subordinate list display list item}
   in      item: displ_item_t;          {the item to draw, must be type LIST}
-  in out  draw: displ_draw_t);         {drawing state}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
-
-var
-  dr: displ_draw_t;                    {drawing state to use for the list}
 
 begin
   if item.list_sub_p = nil then return; {no subordinate list, nothing to do ?}
-{
-*   Fill in drawing state to use only for the subordinate list.
-}
-  dr.curr := draw.curr;                {copy the current drawing state}
 
-  dr.def := item.list_sub_p^.rend;     {init defaults to settings for the sub-list}
-  displ_rend_resolve (dr.def, draw.def); {remaining defaults from parent draw state}
-
-  displ_draw_listst (item.list_sub_p^, dr); {draw the subordinate list}
+  displ_draw_listst (item.list_sub_p^, drdef, drcur); {draw the subordinate list}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_DRAW_ITEM_VECT (ITEM, DRAW)
+*   Subroutine DISPL_DRAW_ITEM_VECT (ITEM, DRDEF, DRCUR)
 *
-*   Draw the chained vectors list item ITEM.  DRAW is the drawing state.
+*   Draw the chained vectors list item ITEM.
 *
 *   This is a low level routine that requires ITEM to be of type VECT, which is
 *   not checked.
 }
 procedure displ_draw_item_vect (       {draw chained vectors display list item}
   in      item: displ_item_t;          {the item to draw, must be type VECT}
-  in out  draw: displ_draw_t);         {drawing state}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 var
@@ -132,24 +125,23 @@ begin
   if coor_p^.next_p = nil then return; {no second coordinate, nothing to draw ?}
 
   displ_rend_set_color (               {set the color}
-    item.vect_color_p, draw);
+    item.vect_color_p, drdef, drcur);
   displ_rend_set_vect (                {set vector drawing parameters}
-    item.vect_parm_p, draw);
+    item.vect_parm_p, drdef, drcur);
 
   rend_set.cpnt_2d^ (coor_p^.x, coor_p^.y); {set current point to first coordinate}
     coor_p := coor_p^.next_p;          {advance to the second coordinate}
-
- repeat                                {back here each new vector to draw}
-   rend_prim.vect_2d^ (coor_p^.x, coor_p^.y); {draw vector to this coordinate}
-   coor_p := coor_p^.next_p;           {advance to next coordinate in list}
-   until coor_p = nil;                 {back until hit end of list}
- end;
+  repeat                               {back here each new vector to draw}
+    rend_prim.vect_2d^ (coor_p^.x, coor_p^.y); {draw vector to this coordinate}
+    coor_p := coor_p^.next_p;          {advance to next coordinate in list}
+    until coor_p = nil;                {back until hit end of list}
+  end;
 {
 ********************************************************************************
 *
 *   Subroutine DISPL_DRAW_LIST (LIST)
 *
-*   Draw all the contents of the indicate display list.  The current drawing
+*   Draw all the contents of the indicated display list.  The current drawing
 *   state is assumed to be the default.
 }
 procedure displ_draw_list (            {draw display list, curr RENDlib state is default}
@@ -157,7 +149,8 @@ procedure displ_draw_list (            {draw display list, curr RENDlib state is
   val_param;
 
 var
-  draw: displ_draw_t;                  {resolved drawing state}
+  drdef: displ_rend_t;                 {default draw settings}
+  drcur: displ_rend_t;                 {current draw settings}
   color: displ_color_t;                {default color}
   vect_parm: displ_vparm_t;            {default vector drawing parameters}
   text_parm: displ_tparm_t;            {default text drawing parameters}
@@ -171,41 +164,44 @@ begin
     color.red, color.grn, color.blu, color.opac);
   rend_get.vect_parms^ (vect_parm.vparm); {get the current vector drawing parameters}
   rend_get.text_parms^ (text_parm.tparm); {get the current text drawing parameters}
+
+  displ_rend_init (drcur);             {init current settings descriptor}
+  drcur.color_p := addr(color);        {save the current settings}
+  drcur.vect_parm_p := addr(vect_parm);
+  drcur.text_parm_p := addr(text_parm);
 {
-*   Fill in the resolved drawing state.
+*   Resolve the default draw settings.
 }
-  displ_rend_init (draw.curr);         {make sure all fields are set}
-  draw.curr.color_p := addr(color);    {init current settings}
-  draw.curr.vect_parm_p := addr(vect_parm);
-  draw.curr.text_parm_p := addr(text_parm);
+  displ_rend_init (drdef);             {make sure all fields are set}
+  displ_rend_resolve (drdef, drcur);   {use current settings as the defaults}
 
-  displ_rend_init (draw.def);          {make sure all fields are set}
-  displ_rend_resolve (draw.def, draw.curr); {use current settings for remaining defaults}
-
-  displ_draw_listst (list, draw);      {actually draw the list, pass drawing state}
-
+  displ_draw_listst (list, drdef, drcur); {draw the list, pass drawing state}
   rend_set.exit_rend^;                 {pop back out of graphics mode}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine DISPL_DRAW_LISTST (LIST, DRAW)
+*   Subroutine DISPL_DRAW_LISTST (LIST, DRDEF, DRCUR)
 *
 *   Low level routine to draw the contents of a display list.  The drawing state
 *   is supplied by the caller.
 }
 procedure displ_draw_listst (          {draw list, drawing state supplied}
   in      list: displ_t;               {the list to draw}
-  in out  draw: displ_draw_t);         {drawing state}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
   val_param;
 
 var
+  def: displ_rend_t;                   {nested default draw settings}
   item_p: displ_item_p_t;              {points to current item in display list}
 
 begin
+  displ_rend_default (drdef, list.rend, def); {make our nested defaults}
+
   item_p := list.first_p;              {init to first item in the list}
   while item_p <> nil do begin         {loop over the list of items}
-    displ_draw_itemst (item_p^, draw); {draw this item}
+    displ_draw_itemst (item_p^, def, drcur); {draw this item}
     item_p := item_p^.next_p;          {advance to next item in the list}
     end;                               {back to draw this new item}
   end;
