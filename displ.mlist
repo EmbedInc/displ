@@ -4,6 +4,7 @@ displ_edvect.obj
 displ_file_rd.obj
 displ_file_wr.obj
 displ_draw.obj
+displ_draw_img.obj
 displ_item.obj
 displ_list.obj
 displ_rend.obj

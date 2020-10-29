@@ -48,6 +48,10 @@ type
   tparms_t =                           {pointers to all the text parameter blocks}
     array [1..1] of displ_tparm_p_t;
 
+  imgs_p_t = ^imgs_t;
+  imgs_t =                             {all the external image descriptors}
+    array [1..1] of displ_img_t;
+
   rd_t = record                        {DISPL file reading state}
     mem_perm_p: util_mem_context_p_t;  {use for mem returned to caller}
     mem_temp_p: util_mem_context_p_t;  {use for temp mem while reading file}
@@ -66,6 +70,8 @@ type
     vparms_p: vparms_p_t;              {pointer to vector parameters list}
     ntparms: sys_int_machine_t;        {number of text parm blocks in the file}
     tparms_p: tparms_p_t;              {pointer to text parameters list}
+    nimgs: sys_int_machine_t;          {number of external images referenced}
+    imgs_p: imgs_p_t;                  {pointer to external images list}
     end;
 {
 ********************************************************************************
@@ -107,6 +113,8 @@ begin
   rd.vparms_p := nil;
   rd.ntparms := 0;
   rd.tparms_p := nil;
+  rd.nimgs := 0;
+  rd.imgs_p := nil;
   end;
 {
 ********************************************************************************
@@ -861,7 +869,7 @@ begin
     string_tkpick80 (cmd,              {pick the command name from the list}
       'COLOR VPARM P',
       pick);
-    case pick of                       {which command is it}
+    case pick of                       {which command is it ?}
 
 1:    begin                            {COLOR}
         rdint (rd, id, stat);          {get the color ID}
@@ -928,6 +936,194 @@ err_atline:
 {
 ********************************************************************************
 *
+*   Local subroutine RD_IMAGE (RD, STAT)
+*
+*   Read the description of one external image.  The IMAGE keyword has been
+*   read.
+}
+procedure rd_image (                   {read IMAGE command}
+  in out  rd: rd_t;                    {input file reading state}
+  in out  stat: sys_err_t);            {completion status, set to no err on entry}
+  val_param; internal;
+
+var
+  id: sys_int_machine_t;               {1-N ID}
+  name: string_treename_t;             {image file name}
+  conn: img_conn_t;                    {connection to the image file}
+  img_p: displ_img_p_t;                {pointer to descriptor for this new image}
+  ii: sys_int_machine_t;               {scratch integer and loop counter}
+  scan_p: img_scan1_arg_p_t;           {pointer to image scan line}
+
+label
+  err_syn, err_atline;
+
+begin
+  name.max := size_char(name.str);     {init local var string}
+
+  rdint (rd, id, stat);                {get the ID of this image}
+  if sys_error(stat) then return;
+
+  if (id < 1) or (id > rd.nlists) then begin
+    sys_stat_set (displ_subsys_k, displ_stat_badlistid_k, stat);
+    sys_stat_parm_int (id, stat);
+    goto err_atline;
+    end;
+  img_p := addr(rd.imgs_p^[id]);       {get pointer to descriptor for this ID}
+
+  if img_p^.id <> 0 then begin         {this descriptor already filled in ?}
+    sys_stat_set (displ_subsys_k, displ_stat_dupimg_k, stat);
+    sys_stat_parm_int (id, stat);
+    goto err_atline;
+    end;
+
+  if not rdtoken (rd, name) then goto err_syn; {get the image file name}
+  if not end_of_line (rd, stat) then return;
+
+  img_open_read_img (                  {open the image file}
+    name, conn, stat);
+  if sys_error(stat) then return;
+
+  img_p^.id := id;                     {save the ID of this image}
+  string_alloc (                       {allocate mem for full pathname}
+    conn.tnam.len, rd.mem_perm_p^, false, img_p^.tnam_p);
+  string_copy (conn.tnam, img_p^.tnam_p^); {save absolute image file pathname}
+  img_p^.dx := conn.x_size;            {save image size in pixels}
+  img_p^.dy := conn.y_size;
+  img_p^.aspect := conn.aspect;        {save aspect ratio}
+
+  util_mem_grab (                      {allocate memory for the image pixels}
+    sizeof(img_p^.pix_p^[0]) * img_p^.dx * img_p^.dy, {amount of memory to allocate}
+    rd.mem_perm_p^,                    {parent memory context}
+    false,                             {won't individually deallocate}
+    img_p^.pix_p);                     {returned pointer to the new memory}
+
+  scan_p := img_p^.pix_p;              {init pointer to where to save first scan line}
+  for ii := 1 to img_p^.dy do begin    {down the scan lines}
+    img_read_scan1 (conn, scan_p^, stat); {read and save this scan line}
+    if sys_error(stat) then return;
+    scan_p := univ_ptr(                {advance write pointer to next scan line}
+      sys_int_adr_t(scan_p) + sizeof(img_p^.pix_p^[0]) * img_p^.dx);
+    end;                               {back to get next scan line}
+  img_close (conn, stat);              {close the image file}
+  if sys_error(stat) then return;
+
+  return;
+{
+*   Error, bad syntax in file.
+}
+err_syn:
+  sys_stat_set (displ_subsys_k, displ_stat_errsyn_k, stat);
+  goto err_atline;
+{
+*   An error has occurred and STAT has been partially set.  The current line
+*   number and file name will be added to STAT before returning to the caller
+*   with the error.
+}
+err_atline:
+  err_line_file (rd, stat);
+  end;
+{
+********************************************************************************
+*
+*   Local subroutine RD_LIST_IMAGE (RD, LEDIT, STAT)
+*
+*   Read the rest of the LIST IMAGE command, and add the image reference to the
+*   list being edited at LEDIT.  The IMAGE keyword has just been read.
+}
+procedure rd_list_image (              {read LIST IMAGE command}
+  in out  rd: rd_t;                    {input file reading state}
+  in out  ledit: displ_edit_t;         {list editing state}
+  in out  stat: sys_err_t);            {completion status, set to no err on entry}
+  val_param; internal;
+
+var
+  id: sys_int_machine_t;               {image ID}
+  cmd: string_var32_t;                 {command name}
+  pick: sys_int_machine_t;             {number of keyword picked from list}
+
+label
+  err_syn, err_atline;
+
+begin
+  cmd.max := size_char(cmd.str);       {init local var string}
+
+  rdint (rd, id, stat);                {get the image ID}
+  if sys_error(stat) then return;
+  if not end_of_line (rd, stat) then return; {end of IMAGE command line}
+
+  if (id < 1) or (id > rd.nimgs) then begin {image ID is out of range ?}
+    sys_stat_set (displ_subsys_k, displ_stat_badimgid_k, stat);
+    goto err_atline;
+    end;
+
+  displ_item_new (ledit);              {create new list item}
+  displ_item_image (ledit, rd.imgs_p^[id]); {make image overlay item, and init}
+
+  block_start (rd);                    {down one level into IMAGE block}
+  while rdline (rd, stat) do begin     {back here each new line in IMAGE block}
+    if not rdkeyw (rd, cmd) then goto err_syn; {get this command name}
+    string_tkpick80 (cmd,              {pick the command name from the list}
+      'RECT XB YB OFS',
+      pick);
+    case pick of                       {which command is it ?}
+
+1:    begin                            {RECT lft rit bot top}
+        rdfp (rd, ledit.item_p^.img_lft, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_rit, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_bot, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_top, stat);
+        if sys_error(stat) then return;
+        end;
+
+2:    begin                            {XB x y}
+        rdfp (rd, ledit.item_p^.img_xf.xb.x, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_xf.xb.y, stat);
+        if sys_error(stat) then return;
+        end;
+
+3:    begin                            {YB x y}
+        rdfp (rd, ledit.item_p^.img_xf.yb.x, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_xf.yb.y, stat);
+        if sys_error(stat) then return;
+        end;
+
+4:    begin                            {OFS x y}
+        rdfp (rd, ledit.item_p^.img_xf.ofs.x, stat);
+        if sys_error(stat) then return;
+        rdfp (rd, ledit.item_p^.img_xf.ofs.y, stat);
+        if sys_error(stat) then return;
+        end;
+
+otherwise                              {unrecognized command}
+      sys_stat_set (displ_subsys_k, displ_stat_badcmd_k, stat);
+      goto err_atline;
+      end;                             {end of command keyword cases}
+
+    if not end_of_line (rd, stat) then return; {nothing more allowed after this command}
+    end;                               {back to get the next command}
+
+  return;
+{
+*   Error, bad syntax in file.
+}
+err_syn:
+  sys_stat_set (displ_subsys_k, displ_stat_errsyn_k, stat);
+  goto err_atline;
+{
+*   Error exit to add line number and file name to STAT.  STAT must already be
+*   set, and the next two parameters must be the line number and the file name.
+}
+err_atline:
+  err_line_file (rd, stat);            {add line number and file name to STAT}
+  end;
+{
+********************************************************************************
+*
 *   Local subroutine RD_LIST (RD, STAT)
 *
 *   Read and save a display list.  The LIST command keyword has been read.
@@ -974,7 +1170,7 @@ begin
   while rdline (rd, stat) do begin     {back here each new line in the LIST block}
     if not rdkeyw (rd, cmd) then goto err_syn; {get this command name}
     string_tkpick80 (cmd,              {pick the command name from the list}
-      'COLOR VPARM TPARM VECT',
+      'COLOR VPARM TPARM VECT IMAGE',
       pick);
     case pick of                       {which command is it}
 
@@ -1032,6 +1228,12 @@ begin
         next;                          {back for next command in this LIST block}
         end;
 
+5:    begin                            {IMAGE n}
+        rd_list_image (rd, ledit, stat); {read image reference, add it to the list}
+        if sys_error(stat) then return;
+        next;                          {back for next command in this LIST block}
+        end;
+
 otherwise                              {unrecognized LIST subcommand}
       sys_stat_set (displ_subsys_k, displ_stat_badcmd_k, stat);
       sys_stat_parm_vstr (cmd, stat);
@@ -1077,7 +1279,7 @@ var
   ii: sys_int_machine_t;               {scratch integer}
 
 label
-  err_val, err_syn, err_atline, leave;
+  done_cmd, err_val, err_syn, err_atline, leave;
 
 begin
   cmd.max := size_char(cmd.str);
@@ -1088,7 +1290,7 @@ begin
   while rdline (rd, stat) do begin     {loop over all the top level commands}
     if not rdkeyw (rd, cmd) then goto err_syn; {get this command name}
     string_tkpick80 (cmd,              {pick the command name from the list}
-      'LISTS COLORS VPARMS TPARMS COLOR VPARM TPARM LIST',
+      'LISTS COLORS VPARMS TPARMS COLOR VPARM TPARM LIST IMAGES IMAGE',
       pick);
     case pick of                       {which command is it}
 
@@ -1173,6 +1375,27 @@ begin
           end;
         end;
 
+9:    begin                            {IMAGES n}
+        if rd.imgs_p <> nil then begin
+          sys_stat_set (displ_subsys_k, displ_stat_2imgs_k, stat);
+          goto err_atline;
+          end;
+        rdint (rd, ii, stat);          {get number of images}
+        if sys_error(stat) then goto leave;
+        if not end_of_line (rd, stat) then goto leave;
+        rd.nimgs := ii;                {save number of imgs}
+        if rd.nimgs <= 0 then goto done_cmd; {no images, nothing more to do ?}
+
+        util_mem_grab (                {allocate mem for imgs list}
+          sizeof(rd.imgs_p^[1]) * rd.nimgs, {amount of memory to allocate}
+          rd.mem_temp_p^,              {memory context}
+          false,                       {will not individually deallocate}
+          rd.imgs_p);                  {returned pointer to the new memory}
+        for ii := 1 to rd.nimgs do begin {init all images to undefined}
+          rd.imgs_p^[ii].id := 0;
+          end;
+        end;
+
 5:    begin                            {COLOR n red grn blu opac}
         rd_color (rd, stat);           {process the command}
         end;
@@ -1185,6 +1408,10 @@ begin
         rd_tparm (rd, stat);
         end;
 
+10:   begin                            {IMAGE n}
+        rd_image (rd, stat);
+        end;
+
 8:    begin                            {LIST n}
         rd_list (rd, stat);
         end;
@@ -1194,8 +1421,9 @@ otherwise                              {unrecognized command name}
       sys_stat_parm_vstr (cmd, stat);
       goto err_atline;
       end;                             {end of command cases}
-    if sys_error(stat) then goto leave;
 
+done_cmd:                              {done processing this command}
+    if sys_error(stat) then goto leave;
     end;                               {back to get and process the next command}
   goto leave;                          {exit with current STAT}
 {

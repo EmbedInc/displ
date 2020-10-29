@@ -15,6 +15,7 @@ call src_pas %srcdir% %libname%_edvect
 call src_pas %srcdir% %libname%_file_rd
 call src_pas %srcdir% %libname%_file_wr
 call src_pas %srcdir% %libname%_draw
+call src_pas %srcdir% %libname%_draw_img
 call src_pas %srcdir% %libname%_item
 call src_pas %srcdir% %libname%_list
 call src_pas %srcdir% %libname%_rend

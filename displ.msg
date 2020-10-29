@@ -72,3 +72,13 @@ msg err21
   lan english -def
     Text parameters set %p1i is undefined, referenced on line %p2i of file
     "%p3s".
+msg err22
+  lan english -def
+    Multiple IMAGES commands.
+    Error on line %p1i of file "P12s".
+msg err23
+  lan english -def
+    Invalid image ID of %p1i on line %p2i of file "%p3s".
+msg err24
+  lan english -def
+    Duplicate definition of image %p1i, on line %p2i of file "%p3s".

@@ -77,6 +77,10 @@ displ_item_vect_k: begin
       displ_draw_item_vect (item, drdef, drcur); {draw the VECT item}
       end;
 
+displ_item_img_k: begin
+      displ_draw_item_img (item, drdef, drcur); {draw the IMG item}
+      end;
+
     end;                               {end of item type cases}
   end;
 {

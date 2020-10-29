@@ -4,6 +4,7 @@ module displ_item;
 define displ_item_new;
 define displ_item_list;
 define displ_item_vect;
+define displ_item_image;
 %include 'displ2.ins.pas';
 {
 ********************************************************************************
@@ -96,4 +97,51 @@ begin
   edit.item_p^.vect_parm_p := nil;     {init to vector parameters inherited}
   edit.item_p^.vect_first_p := nil;    {init to no coordinates in the chain}
   edit.item_p^.vect_last_p := nil;
+  end;
+{
+********************************************************************************
+*
+*   Subroutine DISPL_ITEM_IMAGE (EDIT, IMG)
+*
+*   Make the current item an image reference.  The current item must be of type
+*   NONE.
+*
+*   The transform from the drawing space to the pixel space of the referenced
+*   image is initialized such that the image is maximized and centered in the
+*   central square (-1 to +1) of the drawing space.
+}
+procedure displ_item_image (           {make current item an image overlay}
+  in out  edit: displ_edit_t;          {list edit state, curr item must be type NONE}
+  in var  img: displ_img_t);           {the image being referenced}
+  val_param;
+
+var
+  sc: real;                            {scale factor}
+
+begin
+  if edit.list_p = nil then return;    {invalid edit state ?}
+  if edit.item_p = nil then return;    {no item at current position ?}
+  if edit.item_p^.item <> displ_item_none_k then return; {not a NONE item ?}
+
+  edit.item_p^.item := displ_item_img_k; {make item an image reference}
+  edit.item_p^.img_p := addr(img);     {link to the image being referenced}
+  edit.item_p^.img_lft := -1.0;
+  edit.item_p^.img_rit := 1.0;
+  edit.item_p^.img_bot := -1.0;
+  edit.item_p^.img_top := 1.0;
+
+  if img.aspect >= 1.0
+    then begin                         {image is wider than tall}
+      sc := img.dx / 2.0;
+      end
+    else begin                         {image is taller than wide}
+      sc := img.dy / 2.0;
+      end
+    ;
+  edit.item_p^.img_xf.xb.x := sc;
+  edit.item_p^.img_xf.xb.y := 0.0;
+  edit.item_p^.img_xf.yb.x := 0.0;
+  edit.item_p^.img_xf.yb.y := -sc;
+  edit.item_p^.img_xf.ofs.x := img.dx / 2.0;
+  edit.item_p^.img_xf.ofs.y := img.dy / 2.0;
   end;

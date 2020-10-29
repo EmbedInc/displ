@@ -11,6 +11,12 @@
 {
 *   Private subroutines and functions.
 }
+procedure displ_draw_item_img (        {draw overlayed image display list item}
+  in      item: displ_item_t;          {the item to draw, must be type IMG}
+  in      drdef: displ_rend_t;         {default drawing settings}
+  in out  drcur: displ_rend_t);        {current drawing settings}
+  val_param; extern;
+
 procedure displ_draw_item_list (       {draw subordinate list display list item}
   in      item: displ_item_t;          {the item to draw, must be type LIST}
   in      drdef: displ_rend_t;         {default drawing settings}

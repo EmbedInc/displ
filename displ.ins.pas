@@ -27,6 +27,9 @@ const
   displ_stat_undefcol_k = 19;          {undefined color referenced}
   displ_stat_undefvp_k = 20;           {undefined VPARM referenced}
   displ_stat_undeftp_k = 21;           {undefined TPARM referenced}
+  displ_stat_2imgs_k = 22;             {multiple IMAGES commands}
+  displ_stat_badimgid_k = 23;          {invalid image ID}
+  displ_stat_dupimg_k = 24;            {duplicate IMAGE  definition}
 
 type
   displ_item_p_t = ^displ_item_t;
@@ -78,7 +81,17 @@ type
   displ_item_k_t = (                   {IDs for each of the possible list items}
     displ_item_none_k,                 {indicates no item, unknown, etc}
     displ_item_list_k,                 {sub-list}
-    displ_item_vect_k);                {chain of linked vectors}
+    displ_item_vect_k,                 {chain of linked vectors}
+    displ_item_img_k);                 {overlay image}
+
+  displ_img_p_t = ^displ_img_t;
+  displ_img_t = record                 {info about one external image}
+    id: sys_int_machine_t;             {assigned 1-N, 0 = unassigned}
+    tnam_p: string_var_p_t;            {pnt to image file name, tnam after opened}
+    dx, dy: sys_int_machine_t;         {image size in pixels}
+    aspect: real;                      {width/height of properly displayed image}
+    pix_p: img_scan1_arg_p_t;          {points to scan lines}
+    end;
 
   displ_item_t = record                {one item in the display list}
     list_p: displ_p_t;                 {points to list containing this item}
@@ -92,10 +105,18 @@ displ_item_list_k: (                   {sub-list}
       list_sub_p: displ_p_t;           {points to the subordinate list}
       );
 displ_item_vect_k: (                   {chain of vectors, RENDlib 2D space}
-      vect_first_p: displ_coor2d_ent_p_t; {points starting coordinate}
+      vect_first_p: displ_coor2d_ent_p_t; {points to starting coordinate}
       vect_last_p: displ_coor2d_ent_p_t; {points to ending coordinate}
       vect_color_p: displ_color_p_t;   {points to color, NIL inherits}
       vect_parm_p: displ_vparm_p_t;    {points to vector properties, NIL iherits}
+      );
+displ_item_img_k: (                    {overlay image}
+      img_p: displ_img_p_t;            {points to image descriptor}
+      img_lft: real;                   {region where overlay image is displayed}
+      img_rit: real;
+      img_bot: real;
+      img_top: real;
+      img_xf: vect_xf2d_t;             {drawing --> overlay img pixel coor transform}
       );
     end;
 
@@ -235,6 +256,11 @@ procedure displ_file_write (           {write display list DAG to file}
 procedure displ_item_list (            {make current item reference to a list}
   in out  edit: displ_edit_t;          {list edit state, curr item must be type NONE}
   in var  list: displ_t);              {the list to reference}
+  val_param; extern;
+
+procedure displ_item_image (           {make current item an image overlay}
+  in out  edit: displ_edit_t;          {list edit state, curr item must be type NONE}
+  in var  img: displ_img_t);           {the image being referenced}
   val_param; extern;
 
 procedure displ_item_new (             {create new item in a list}
