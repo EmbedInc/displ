@@ -1388,7 +1388,7 @@ begin
 
         util_mem_grab (                {allocate mem for imgs list}
           sizeof(rd.imgs_p^[1]) * rd.nimgs, {amount of memory to allocate}
-          rd.mem_temp_p^,              {memory context}
+          rd.mem_perm_p^,              {memory context}
           false,                       {will not individually deallocate}
           rd.imgs_p);                  {returned pointer to the new memory}
         for ii := 1 to rd.nimgs do begin {init all images to undefined}
