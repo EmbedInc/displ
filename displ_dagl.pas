@@ -26,9 +26,11 @@ begin
   dagl.ncol := 0;                      {no colors in list}
   dagl.nvparm := 0;                    {no vector parameters in the list}
   dagl.ntparm := 0;                    {no text parameters in the list}
+  dagl.nimg := 0;                      {no images in the list}
   dagl.color_p := nil;                 {init the color list to empty}
   dagl.vparm_p := nil;                 {init the vector parameters list to empty}
   dagl.tparm_p := nil;                 {init the text parmeters list to empty}
+  dagl.imgs_p := nil;                  {init the images list to empty}
   end;
 {
 ********************************************************************************
@@ -180,6 +182,44 @@ begin
 {
 ********************************************************************************
 *
+*   Local subroutine DISPL_DAGL_IMAGE (DAGL, IMG_P)
+*
+*   Make sure the image pointed to by IMG_P is in the DAG images list.
+}
+procedure displ_dagl_image (           {make sure image is in DAG list}
+  in out  dagl: displ_dagl_t;          {the DAG list}
+  in      img_p: displ_img_p_t);       {pointer to the image to ensure in list}
+  val_param;
+
+var
+  ent_p: displ_dagl_img_p_t;           {pointer to images list entry}
+
+begin
+  if img_p = nil then return;          {no image, nothing to do ?}
+
+{
+*   Check for this image already in the list.
+}
+  ent_p := dagl.imgs_p;                {init to first existing list entry}
+  while ent_p <> nil do begin          {scan the list}
+    if ent_p^.img_p = img_p then return; {this image is already in the list ?}
+    ent_p := ent_p^.next_p;            {to next list entry}
+    end;                               {back to check this new list entry}
+{
+*   Create a new list entry for this image.
+}
+  util_mem_grab (                      {alloc mem for the new list entry}
+    sizeof(ent_p^), dagl.mem_p^, false, ent_p);
+
+  ent_p^.next_p := dagl.imgs_p;        {link to start of list}
+  dagl.imgs_p := ent_p;
+  ent_p^.img_p := img_p;               {save pointer to the parameters}
+
+  dagl.nimg := dagl.nimg + 1;          {count one more images list entry}
+  end;
+{
+********************************************************************************
+*
 *   Local subroutine DISPL_DAGL_ENT_NEW (DAGL, POS_P, NEW_P)
 *
 *   Add a new display list entry to the DAG list DAGL.  The new entry will be
@@ -296,6 +336,10 @@ displ_item_vect_k: begin               {chain of vectors}
         displ_dagl_vparm (dagl, item_p^.vect_parm_p);
         end;
 
+displ_item_img_k: begin                {overlay image}
+        displ_dagl_image (dagl, item_p^.img_p); {ensure this image is in DAG list}
+        end;
+
       end;                             {end of display list item type cases}
 
 next_ent:                              {done with this display list entry, on to next}
@@ -324,7 +368,8 @@ var
   ent_p: displ_dagl_ent_p_t;           {pointer to current DAG list entry}
   col_p: displ_dagl_color_p_t;         {points to curr color parameters list entry}
   vect_p: displ_dagl_vparm_p_t;        {points to curr vector parms list entry}
-  text_p : displ_dagl_tparm_p_t;       {points to curr text parms list entry}
+  text_p: displ_dagl_tparm_p_t;        {points to curr text parms list entry}
+  img_p: displ_dagl_img_p_t;           {points to curr images list entry}
 
 begin
   displ_dagl_displ_add (dagl, nil, displ); {add display list to start of DAG list}
@@ -368,5 +413,15 @@ begin
     text_p^.tparm_p^.id := id;         {assign ID to this entry}
     id := id + 1;                      {update ID to assign next entry}
     text_p := text_p^.next_p;          {advance to the next entry in the list}
+    end;                               {back to do this new entry}
+{
+*   Assign IDs to all the images.
+}
+  id := 1;                             {init next ID to assign}
+  img_p := dagl.imgs_p;                {init to first entry in the list}
+  while img_p <> nil do begin          {loop over all the list entries}
+    img_p^.img_p^.id := id;            {assign ID to this entry}
+    id := id + 1;                      {update ID to assign next entry}
+    img_p := img_p^.next_p;            {advance to the next entry in the list}
     end;                               {back to do this new entry}
   end;

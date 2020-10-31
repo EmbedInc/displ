@@ -158,18 +158,26 @@ displ_item_img_k: (                    {overlay image}
     tparm_p: displ_tparm_p_t;          {points to the text parameters}
     end;
 
+  displ_dagl_img_p_t = ^displ_dagl_img_t;
+  displ_dagl_img_t = record            {one DAG images list entry}
+    next_p: displ_dagl_img_p_t;        {points to next list entry}
+    img_p: displ_img_p_t;              {points to the image for this list entry}
+    end;
+
   displ_dagl_p_t = ^displ_dagl_t;
   displ_dagl_t = record                {linear list of DAG nodes with only fwd dependencies}
     mem_p: util_mem_context_p_t;       {mem context for all DAG list dynamic memory}
     first_p: displ_dagl_ent_p_t;       {points to first list entry, top parent}
-    last_p: displ_dagl_ent_p_t;        {poitns to last list entry, no dependencies}
+    last_p: displ_dagl_ent_p_t;        {points to last list entry, no dependencies}
     nlist: sys_int_machine_t;          {number of display lists in DAG list}
     ncol: sys_int_machine_t;           {number of colors in list}
     nvparm: sys_int_machine_t;         {number of vector parameter sets in list}
-    ntparm: sys_int_machine_t;         {number of test parameter sets in list}
+    ntparm: sys_int_machine_t;         {number of text parameter sets in list}
+    nimg: sys_int_machine_t;           {number of images in list}
     color_p: displ_dagl_color_p_t;     {points to list of colors}
     vparm_p: displ_dagl_vparm_p_t;     {points to list of vector parameters}
     tparm_p: displ_dagl_tparm_p_t;     {points to list of text parameters}
+    imgs_p: displ_dagl_img_p_t;        {points to list of images}
     end;
 {
 *   Subroutines and functions.

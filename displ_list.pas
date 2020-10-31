@@ -102,6 +102,15 @@ displ_item_vect_k: begin               {chain of vectors}
         return;                        {at least one vector, this list draws}
         end;
 
+displ_item_img_k: begin                {overlay image}
+        if item_p^.img_p = nil         {no image referenced ?}
+          then goto done_item;
+        if                             {the overlay region has positive area ?}
+            (item_p^.img_rit > item_p^.img_lft) and
+            (item_p^.img_top > item_p^.img_bot)
+          then return;
+        end;
+
       end;                             {end of item type cases}
 
 done_item:                             {done with this item, on to next}

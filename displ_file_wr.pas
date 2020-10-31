@@ -39,7 +39,7 @@ define displ_file_write;
 type
   outstate_t = record                  {output file writing state}
     conn: file_conn_t;                 {connection to the output file}
-    buf: string_var80_t;               {one line output buffer}
+    buf: string_var1024_t;             {one line output buffer}
     blklev: sys_int_machine_t;         {block nesting level, 0 at top}
     stat_p: sys_err_p_t;               {points to STAT to write error status to}
     end;
@@ -174,7 +174,7 @@ procedure wvtk (                       {write var string as token to output line
   val_param; internal;
 
 var
-  tk: string_var80_t;                  {single-token version of input string}
+  tk: string_var1024_t;                {single-token version of input string}
 
 begin
   tk.max := size_char(tk.str);         {init local var string}
@@ -200,7 +200,7 @@ procedure wtk (                        {write Pascal string as token to output l
   val_param; internal;
 
 var
-  vstr: string_var80_t;
+  vstr: string_var1024_t;
 
 begin
   vstr.max := size_char(vstr.str);     {init local var string}
@@ -496,6 +496,39 @@ displ_item_vect_k: begin               {chain of vectors}
         block_end (os);                {now no longer in VECT block}
         end;
 
+displ_item_img_k: begin                {overlay image}
+        if item_p^.img_p = nil then goto done_item; {no image referenced ?}
+
+        wstr (os, 'IMAGE');
+        wint (os, item_p^.img_p^.id);
+        if not wline(os) then return;
+        block_start (os);              {now in IMAGE block}
+
+        wstr (os, 'RECT');
+        wfps (os, item_p^.img_lft, 7);
+        wfps (os, item_p^.img_rit, 7);
+        wfps (os, item_p^.img_bot, 7);
+        wfps (os, item_p^.img_top, 7);
+        if not wline(os) then return;
+
+        wstr (os, 'XB');
+        wfps (os, item_p^.img_xf.xb.x, 7);
+        wfps (os, item_p^.img_xf.xb.y, 7);
+        if not wline(os) then return;
+
+        wstr (os, 'YB');
+        wfps (os, item_p^.img_xf.yb.x, 7);
+        wfps (os, item_p^.img_xf.yb.y, 7);
+        if not wline(os) then return;
+
+        wstr (os, 'OFS');
+        wfps (os, item_p^.img_xf.ofs.x, 7);
+        wfps (os, item_p^.img_xf.ofs.y, 7);
+        if not wline(os) then return;
+
+        block_end (os);                {pop back up from IMAGE block}
+        end;
+
 otherwise                              {unrecognized item type}
       writeln ('INTERNAL ERROR in DISPL_FILE_WRITE_DISPL.');
       writeln ('  Unrecognized display list item type with ID ', ord(item_p^.item));
@@ -530,6 +563,7 @@ var
   col_p: displ_dagl_color_p_t;         {points to curr color list entry}
   vparm_p: displ_dagl_vparm_p_t;       {points to curr vect parms list entry}
   tparm_p: displ_dagl_tparm_p_t;       {points to curr text parms list entry}
+  img_p: displ_dagl_img_p_t;           {points to curr images list entry}
   tnam: string_treename_t;             {scratch full file pathname}
   dir: string_treename_t;              {scratch directory name}
   lnam: string_leafname_t;             {scratch file leafname}
@@ -563,6 +597,12 @@ begin
   wstr (os, 'TPARMS');                 {indicate number of text parm sets in this file}
   wint (os, dagl.ntparm);
   if not wline(os) then goto abort;
+
+  if dagl.nimg > 0 then begin          {one or more images exist ?}
+    wstr (os, 'IMAGES');               {indicate number of image referenced}
+    wint (os, dagl.nimg);
+    if not wline(os) then goto abort;
+    end;
 {
 *   Write the color sets.
 }
@@ -692,6 +732,20 @@ begin
 
     block_end (os);                    {done with this TPARM block}
     tparm_p := tparm_p^.next_p;        {to next list entry}
+    end;                               {back to write this new list entry}
+{
+*   Write the external image references.
+}
+  img_p := dagl.imgs_p;                {init to first images list entry}
+  while img_p <> nil do begin          {back here each new list entry}
+    if img_p^.img_p^.id = 1 then begin {blank line before start of image references}
+      blankline (os);
+      end;
+    wstr (os, 'IMAGE');                {command name}
+    wint (os, img_p^.img_p^.id);       {1-N ID of this image}
+    wvtk (os, img_p^.img_p^.tnam_p^);  {image file name}
+    if not wline(os) then goto abort;
+    img_p := img_p^.next_p;            {to next list entry}
     end;                               {back to write this new list entry}
 {
 *   Write the display lists to the output file.
