@@ -116,7 +116,7 @@ procedure displ_item_image (           {make current item an image overlay}
   val_param;
 
 var
-  sc: real;                            {scale factor}
+  sx, sy: real;                        {scale in X and Y dimensions}
 
 begin
   if edit.list_p = nil then return;    {invalid edit state ?}
@@ -132,16 +132,18 @@ begin
 
   if img.aspect >= 1.0
     then begin                         {image is wider than tall}
-      sc := img.dx / 2.0;
+      sx := img.dx / 2.0;
+      sy := img.dy / (2.0 * img.aspect);
       end
     else begin                         {image is taller than wide}
-      sc := img.dy / 2.0;
+      sx := img.dx * img.aspect / 2.0;
+      sy := img.dy / 2.0;
       end
     ;
-  edit.item_p^.img_xf.xb.x := sc;
+  edit.item_p^.img_xf.xb.x := sx;
   edit.item_p^.img_xf.xb.y := 0.0;
   edit.item_p^.img_xf.yb.x := 0.0;
-  edit.item_p^.img_xf.yb.y := -sc;
+  edit.item_p^.img_xf.yb.y := -sy;
   edit.item_p^.img_xf.ofs.x := img.dx / 2.0;
   edit.item_p^.img_xf.ofs.y := img.dy / 2.0;
   end;
